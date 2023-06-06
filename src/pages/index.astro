@@ -1,5 +1,6 @@
 ---
 import Content from '../components/Content.astro';
+import VipContent from '../components/VipContent.astro';
 import Layout from '../layouts/Layout.astro';
 // import Card from '../components/Card.astro';
 const formatter = new Intl.DateTimeFormat('zh', {
@@ -12,11 +13,16 @@ console.log(date)
 const response = await fetch("https://kwcrssftu2.execute-api.ap-southeast-1.amazonaws.com/default/core-analysis?date=" +  date );
 const data = await response.json();
 console.log(data)
+
+const vip_response = await fetch("https://iu8xq68rii.execute-api.ap-southeast-1.amazonaws.com/default/vip-trade-analysis");
+const vip_data = await vip_response.json();
+console.log(vip_data)
 ---
 
 <Layout title={data.Status == 0 ? data.Result.articleTitle : data.Message}>
 	<main>
 		<Content data={data} date={date}/>
+		<VipContent data={vip_data} />
 	</main>
 </Layout>
 

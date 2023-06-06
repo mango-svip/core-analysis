@@ -1,23 +1,22 @@
 ---
-interface Props {
-    data: any;
-    date: string;
-}
-
-const {data, date} = Astro.props
-
 const formatter = new Intl.DateTimeFormat('zh', {
   year: 'numeric',
   month: '2-digit',
   day: '2-digit'
 });
 
+interface Props {
+    data: any;
+    date?: string;
+}
+
+const {data, date =  formatter.format(new Date())} = Astro.props
+console.log(data, date)
 const prevDate = new Date(date);
 prevDate.setTime(prevDate.getTime() - 24 * 60 * 60 * 1000);
 const prevDateStr = formatter.format(prevDate).replaceAll("/", "-");
 console.log(prevDate)
 ---
-
 <div>
     { data.Status == 0 ?
         <h1>  <span class="text-gradient">{data.Result.articleTitle}</span></h1>
