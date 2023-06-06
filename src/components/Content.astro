@@ -1,0 +1,87 @@
+---
+interface Props {
+    data: any;
+    date: string;
+}
+
+const {data, date} = Astro.props
+
+const formatter = new Intl.DateTimeFormat('zh', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+const prevDate = new Date(date);
+prevDate.setTime(prevDate.getTime() - 24 * 60 * 60 * 1000);
+const prevDateStr = formatter.format(prevDate).replaceAll("/", "-");
+console.log(prevDate)
+---
+
+<div>
+    { data.Status == 0 ?
+        <h1>  <span class="text-gradient">{data.Result.articleTitle}</span></h1>
+        <h2> 今日总结 </h2>
+        <p class="instructions">
+            {data.Result.marketSummary}
+        </p>
+        <h2> 行情回顾 </h2>
+        <p class="instructions">
+            {data.Result.stockBrief}
+        </p>
+        <h2> 明日展望 </h2>
+        <p class="instructions">
+            {data.Result.futureAnalysis}
+        </p>
+        : <h2 class="text-gradient" >{data.Message}, 日期: {date}</h2>
+        <div style="text-align:right">
+            <a href={"/" + prevDateStr} class="">前一天</a>
+        </div>
+    }
+</div>
+
+<style>
+    	h1 {
+		font-size: 3rem;
+		font-weight: 800;
+		margin: 0;
+	}
+	.text-gradient {
+		background-image: var(--accent-gradient);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-size: 400%;
+		background-position: 0%;
+	}
+	.instructions {
+		line-height: 1.6;
+		margin: 1rem 0;
+		border: 1px solid rgba(var(--accent), 25%);
+		background-color: white;
+		padding: 1rem;
+		border-radius: 0.4rem;
+	}
+	.instructions code {
+		font-size: 0.875em;
+		font-weight: bold;
+		background: rgba(var(--accent), 12%);
+		color: rgb(var(--accent));
+		border-radius: 4px;
+		padding: 0.3em 0.45em;
+	}
+	.instructions strong {
+		color: rgb(var(--accent));
+	}
+	.link-card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(24ch, 1fr));
+		gap: 1rem;
+		padding: 0;
+	}
+    a {
+        list-style: none;
+        text-decoration: none;
+        border: 1px solid lightblue;
+        border-radius: 5px;
+    }
+</style>
