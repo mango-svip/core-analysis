@@ -1,0 +1,40 @@
+---
+import Layout from "./Layout.astro";
+
+export interface Props {
+	title: string;
+    selected: number;
+}
+
+const { title, selected } = Astro.props;
+
+
+---
+
+<Layout title={title}>
+	<main>
+		<div class="navbar text-warning-content items-center rounded-sm" style="background-image: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);">
+			<a class="btn glass normal-case text-xl mx-auto" href="/">核心内参</a>
+			<a class="btn glass normal-case text-xl mx-auto " href="/vip">财富内参</a>
+		</div>
+        <div class="divider"></div> 
+		<slot />
+	</main>
+</Layout>
+
+
+<style>
+    main {
+		margin: auto;
+		padding: 1.5rem;
+		max-width: 60ch;
+	}
+
+	.text-gradient {
+		background-image: var(--accent-gradient);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-size: 400%;
+		background-position: 0%;
+	}
+</style>

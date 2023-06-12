@@ -7,13 +7,13 @@ const {data} = Astro.props
 ---
 
 <div>
-    <h1><span class="text-gradient">财富内参</span></h1>
+    <!-- <h1><span class="text-gradient">财富内参</span></h1> -->
     {
 
         data.map((element: any) => 
-            <h2> {element.title} </h2>
+            <h2 class="text-gradient"> {element.title} </h2>
             <h3> 
-                <a href={'/reports/' + element.report_id}> {element.abstract} </a>   
+                <a href={'/reports/' + element.report_id} class="link link-warning"> {element.abstract} </a>   
             </h3>
             <p class="instructions">
                 {element.description}

@@ -1,0 +1,13 @@
+---
+import VipContent from "../components/VipContent.astro";
+import CustomLayout from "../layouts/CustomLayout.astro";
+const vip_response = await fetch("https://iu8xq68rii.execute-api.ap-southeast-1.amazonaws.com/default/vip-trade-analysis");
+const vip_data = await vip_response.json();
+console.log(vip_data)
+---
+
+<CustomLayout title='财富内参'>
+	<div>
+        <VipContent data={vip_data} />
+    </div>
+</CustomLayout>
