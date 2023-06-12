@@ -19,16 +19,16 @@ console.log(prevDate)
 ---
 <div>
     { data.Status == 0 ?
-        <h1>  <span class="text-gradient">{data.Result.articleTitle}</span></h1>
-        <h2> 今日总结 </h2>
+        <h1>  <span>{data.Result.articleTitle}</span></h1>
+        <h2 class="text-gradient"> 今日总结 </h2>
         <p class="instructions">
             {data.Result.marketSummary}
         </p>
-        <h2> 行情回顾 </h2>
+        <h2 class="text-gradient"> 行情回顾 </h2>
         <p class="instructions">
             {data.Result.stockBrief}
         </p>
-        <h2> 明日展望 </h2>
+        <h2 class="text-gradient"> 明日展望 </h2>
         <p class="instructions">
             {data.Result.futureAnalysis}
         </p>
