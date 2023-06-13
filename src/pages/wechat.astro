@@ -1,0 +1,49 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const wechatProfile = [
+    {
+        "name": "甜妹钱局",
+        "avatar": "http://wx.qlogo.cn/mmhead/Q3auHgzwzM6HUXsbzBUMticBhYuIYqpGYZe8KaibibFyVDQ2uPicwsq7fw/0",
+        "articles": "https://mp.weixin.qq.com/mp/appmsgalbum?__biz=Mzg5MTcwOTk4Mw==&action=getalbum&album_id=2677798589884186624&scene=173&from_msgid=2247492495&from_itemidx=1&count=3&nolastread=1#wechat_redirect",
+    },
+    {
+        "name": "冠宇的投资日记",
+        "avatar": "http://wx.qlogo.cn/mmhead/Q3auHgzwzM6ib4yRCK9WLsHoVbwLSMPyPZtyryZypuUfKQlH8hMZ2Lw/0",
+        "articles": "https://mp.weixin.qq.com/mp/appmsgalbum?__biz=Mzg4OTUwMzQ1NQ==&action=getalbum&album_id=2334158802813845504&scene=173&from_msgid=2247487096&from_itemidx=1&count=3&nolastread=1#wechat_redirect",
+    },
+    {
+        "name": "点石成三金",
+        "avatar": "http://wx.qlogo.cn/mmhead/Q3auHgzwzM42L6LicNpXGzJV5v3uuj8pic8snlSVK4hYBTtTJKnBxe8Q/0",
+        "articles": "https://mp.weixin.qq.com/mp/appmsgalbum?__biz=Mzg2NTg0OTAyOQ==&action=getalbum&album_id=2578010047591727105&scene=173&from_msgid=2247484432&from_itemidx=1&count=3&nolastread=1#wechat_redirect",
+    },
+    {
+        "name": "北京华哥",
+        "avatar": "http://wx.qlogo.cn/mmhead/Q3auHgzwzM6C0G3GJcibBWN8tjE0DZuMHaHLSyYFKSib1z85qxcPkDyQ/0",
+        "articles": "https://weixin.sogou.com/weixin?type=1&s_from=input&query=%E5%8C%97%E4%BA%AC%E5%8D%8E%E5%93%A5&ie=utf8&_sug_=n&_sug_type_=&w=01019900&sut=1668&sst0=1686621441740&lkt=0%2C0%2C0",
+    },
+]
+
+---
+
+<Layout title="公众号收藏">
+    <main class="container mx-auto">
+        <div class="md:flex justify-start gap-8">
+            {
+                wechatProfile.map(p => 
+                    <div class="card w-full md:w-72 glass">
+                <figure><img src={p.avatar} class="hidden md:block md:mask mask-squircle" alt="avatar" /></figure>
+                <div class="card-body">
+                  <h2 class="card-title">{p.name}</h2>
+                  <div class="card-actions justify-end">
+                    <a class="btn" target="_blank" href={p.articles}>文章列表</a>
+                  </div>
+                </div>
+              </div>
+                )
+            }
+        </div>
+        
+        
+    </main>
+</Layout>
