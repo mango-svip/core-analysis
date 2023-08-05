@@ -1,0 +1,42 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+---
+
+
+<Layout title="小红书去水印">
+   <main class="container mx-auto mt-10">
+        <div class="w-full h-16 bordered border-gray-700  min-h-6 flex justify-center space-x-10">
+            <input type="text" placeholder="输入要提取的链接" class="input input-bordered input-primary w-full max-w-xs" id="link" value="http://xhslink.com/5Zs23s"/>
+            <button type="button" class="w-16 btn" id="lookup">获取</button>
+        </div>
+        <div class="divider"></div>
+        <div id="imageList">
+
+        </div>
+   </main>
+</Layout>
+
+<script>
+    document.querySelector('button#lookup')?.addEventListener("click", function(e){
+        // console.log(e);
+        let link = document.querySelector('input#link')?.value;
+        console.log(link);
+
+        if(link.trim() == '') {
+            alert("链接不能为空！");
+        }
+
+        link = link.trim();
+        fetch("/images", {
+            method: 'post',
+            body: JSON.stringify({
+                link,
+            })
+        }).then(response => {
+            response.json()
+        }).then(data => {
+            console.log(data);
+        })
+    });
+</script>
