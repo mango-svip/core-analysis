@@ -1,0 +1,58 @@
+---
+export interface Item {
+    term: string,
+    zxj: string,
+    yield: string,
+    lockDays: string,
+    availableDay: string
+}
+
+export interface Props {
+	item: Item,
+    buyAmount: number
+}
+
+const { item, buyAmount } = Astro.props;
+
+
+const rateMap = {
+    '1':   0.00001,
+    '2':   0.00002,
+    '3':   0.00003,
+    '4':   0.00004,
+    '7':   0.00005,
+    '14':  0.00010,
+    '28':  0.00020,
+    '91':  0.00030,
+    '182': 0.00030
+}
+---
+
+<div class="px-10 pt-10">
+    <h2 class="card-title">{item.term} 天期</h2>
+    <div class="stats shadow">
+        <div class="stat">
+            <div class="stat-title">预期收益率</div>
+            <div class="stat-value">{item.zxj}%</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title">每10万收益</div>
+            <div class="stat-value text-red-500">{item.yield}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title">资金锁定时长</div>
+            <div class="stat-value text-secondary">{item.lockDays}</div>
+            <div class="stat-desc text-secondary">
+                资金可用日期: {item.availableDay}
+            </div>
+        </div>
+
+        <div class="stat">
+            <div class="stat-title">最终收益计算</div>
+            <div class="stat-value text-secondary">{((buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365).toFixed(2) - (buyAmount * Number(rateMap[item.term])).toFixed(2)).toFixed(2)}</div>
+            <div class="stat-desc text-secondary">
+                已扣手续费: {(buyAmount * Number(rateMap[item.term])).toFixed(2)}
+            </div>
+        </div>
+    </div>
+</div>

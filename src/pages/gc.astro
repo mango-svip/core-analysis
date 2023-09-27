@@ -1,0 +1,72 @@
+---
+import GC from "../components/GC.astro";
+import CustomLayout from "../layouts/CustomLayout.astro";
+
+const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/ReverseRepo/get?app=wzq';
+const response = await fetch(url);
+const json =  await response.json();
+const isError = json == null || json.code != 0
+const data = json.data.data;
+const szData = data.sz;
+const shData = data.sh;
+---
+
+<CustomLayout  title="国债逆回购">
+    {
+        isError && <p> 请求数据错误 </p>
+    }
+
+    { !isError && 
+    <div class="w-full tabs tabs-boxed h-10 justify-evenly"> 
+        <div class="tab" id="sz">深市</div>
+        <div class="tab tab-active" id="sh">沪市</div>
+    </div>
+
+    <div id="szItem" class="hidden">
+    {
+        szData.map(item => (
+            <GC item={item} buyAmount={300000}></GC>
+        ))
+    }
+    </div>
+    <div id="shItem" class="hidden">
+    {
+        shData.map(item => (
+            <GC item={item} buyAmount={300000}></GC>
+         ))
+    }
+    </div>
+
+    }
+</CustomLayout>
+
+<script>
+    function toggle(e) {
+        let sz = document.querySelector('div#sz');
+        let sh = document.querySelector('div#sh');
+        sz.className = 'tab';
+        sh.className = 'tab';
+        e.target.className += ' tab-active';
+
+        let szItem = document.querySelector('div#szItem');
+        let shItem = document.querySelector('div#shItem');
+        shItem.className = 'hidden';
+        szItem.className = 'hidden';
+
+        if(e.target.id =='sz') {
+            szItem.className = 'dispaly';
+        } 
+        if(e.target.id =='sh') {
+            shItem.className = 'dispaly';
+        }
+
+
+        
+
+    }
+
+    document.querySelector('#sz')?.addEventListener('click', toggle);
+    document.querySelector('#sh')?.addEventListener('click', toggle);
+
+
+</script>
