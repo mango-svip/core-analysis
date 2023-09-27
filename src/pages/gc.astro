@@ -9,6 +9,9 @@ const isError = json == null || json.code != 0
 const data = json.data.data;
 const szData = data.sz;
 const shData = data.sh;
+const requestUrl =  new URL(Astro.request.url);
+const buyAmount = requestUrl.searchParams.get('buyAmount') || 100000;
+
 ---
 
 <CustomLayout  title="国债逆回购">
@@ -25,14 +28,14 @@ const shData = data.sh;
     <div id="szItem" class="hidden">
     {
         szData.map(item => (
-            <GC item={item} buyAmount={300000}></GC>
+            <GC item={item} buyAmount={buyAmount}></GC>
         ))
     }
     </div>
-    <div id="shItem" class="hidden">
+    <div id="shItem" class="">
     {
         shData.map(item => (
-            <GC item={item} buyAmount={300000}></GC>
+            <GC item={item} buyAmount={buyAmount}></GC>
          ))
     }
     </div>
