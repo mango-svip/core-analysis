@@ -1,22 +1,109 @@
 ---
-import Content from '../components/Content.astro';
-import CustomLayout from '../layouts/CustomLayout.astro';
-// import Card from '../components/Card.astro';
-const formatter = new Intl.DateTimeFormat('zh', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-});
-const date = formatter.format(new Date()).replaceAll("/", "-");
-console.log(date)
-const response = await fetch("https://kwcrssftu2.execute-api.ap-southeast-1.amazonaws.com/default/core-analysis?date=" +  date );
-const data = await response.json();
-console.log(data)
+import GC from "../components/GC.astro";
+import Layout from "../layouts/Layout.astro";
+
+const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/ReverseRepo/get?app=wzq';
+const response = await fetch(url);
+const json =  await response.json();
+const isError = json == null || json.code != 0
+const data = json.data.data;
+const szData = data.sz;
+const shData = data.sh;
+const requestUrl =  new URL(Astro.request.url);
+const buyAmount = requestUrl.searchParams.get('buyAmount') || 100000;
+
 ---
 
-<CustomLayout title={data.Status == 0 ? data.Result.articleTitle : data.Message}>
-	<div>
-		<Content data={data} date={date}/>
-	</div>
-</CustomLayout>
+<Layout  title="国债逆回购">
+   <div class="mx-auto w-96 md:w-2/5">
+    {
+        isError && <p> 请求数据错误 </p>
+    }
 
+    { !isError &&
+    
+    <div class="form-control m-2 w-full">
+        <label class="input-group justify-end">
+        <span>购买金额：</span>
+        <input type="text" placeholder={buyAmount} class="input input-bordered" id="buyAmount" />
+        <span>元</span>
+        </label>
+    </div> 
+    <div class="w-full tabs tabs-boxed justify-evenly"> 
+        <div class="tab" id="sz">深市</div>
+        <div class="tab tab-active" id="sh">沪市</div>
+    </div>
+
+    <div id="szItem" class="hidden">
+    {
+        szData.map(item => (
+            <GC item={item} buyAmount={buyAmount}></GC>
+        ))
+    }
+    </div>
+    <div id="shItem" class="">
+    {
+        shData.map(item => (
+            <GC item={item} buyAmount={buyAmount}></GC>
+         ))
+    }
+    </div>
+
+    }
+   </div>
+</Layout>
+
+<script>
+    function toggle(e) {
+        let sz = document.querySelector('div#sz');
+        let sh = document.querySelector('div#sh');
+        sz.className = 'tab';
+        sh.className = 'tab';
+        e.target.className += ' tab-active';
+
+        let szItem = document.querySelector('div#szItem');
+        let shItem = document.querySelector('div#shItem');
+        shItem.className = 'hidden';
+        szItem.className = 'hidden';
+
+        if(e.target.id =='sz') {
+            szItem.className = 'dispaly';
+        } 
+        if(e.target.id =='sh') {
+            shItem.className = 'dispaly';
+        }
+
+
+        
+
+    }
+
+    document.querySelector('#sz')?.addEventListener('click', toggle);
+    document.querySelector('#sh')?.addEventListener('click', toggle);
+
+
+
+    let buyAmount = document.querySelector('#buyAmount');
+    buyAmount.addEventListener('blur', function(e) {
+        if(e.target.value == '') {
+            return;
+        }
+        let url = new URL(window.location.href);
+        url.searchParams.set('buyAmount', e.target.value);
+        window.location.href = url.href;
+
+    })
+    buyAmount.addEventListener('keydown', (e) => {
+        if (e.key != 'Enter') {
+            return;
+        }
+        if(e.target.value == '') {
+            return;
+        }
+        let url = new URL(window.location.href);
+        url.searchParams.set('buyAmount', e.target.value);
+        window.location.href = url.href;
+    });
+
+
+</script>
