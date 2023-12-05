@@ -1,0 +1,65 @@
+---
+export interface Item {
+    term: string,
+    zxj: string,
+    yield: string,
+    lockDays: string,
+    availableDay: string
+}
+
+export interface Props {
+	item: Item,
+    buyAmount: number
+}
+
+const { item, buyAmount } = Astro.props;
+
+const rateMap = {
+    '1':   0.00001,
+    '2':   0.00002,
+    '3':   0.00003,
+    '4':   0.00004,
+    '7':   0.00005,
+    '14':  0.00010,
+    '28':  0.00020,
+    '91':  0.00030,
+    '182': 0.00030
+}
+---
+<!-- md:hidden -->
+<div class="card w-full bg-base-100 shadow-xl text-sm mt-2 p-4">
+    <div class="card-body flex-row py-2 px-2">
+
+      <div class="flex-none flex flex-col justify-center items-center">
+        <h2 class="card-title text-sm mr-2">
+            {item.bestOnGivenDay && 
+                <span class="skeleton badge bg-red-500 text-white">最高</span>
+            }
+            <span>{item.term}天期</span>
+        </h2>
+        <span class="badge badge-xs badge-ghost">{item.availableDay}</span>
+      </div>
+
+      <div class="flex grow items-center">
+        <p class="grow w-10 text-end">收益率: <span class="text-red-500">{item.zxj}%</span></p>
+        <div class="grow flex flex-col text-end space-y-1">
+            <p>资金锁定天数 </p>
+            <p class="text-accent">{item.lockDays}</p>
+            <p>每10万收益 </p>
+            <p class="text-secondary">{item.yield}</p>
+        </div>
+        <div class="grow flex flex-col text-end space-y-1">
+          <p>手续费 </p>
+          <p>{(buyAmount * Number(rateMap[item.term])).toFixed(2)}</p>
+          
+          <p>最终收益 </p>
+          <p class="text-red-500">{((buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365).toFixed(2) - (buyAmount * Number(rateMap[item.term])).toFixed(2)).toFixed(2)}</p>
+
+        </div>
+      </div>
+
+
+    </div>
+</div>
+
+<!-- md:display -->

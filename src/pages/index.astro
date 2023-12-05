@@ -1,6 +1,6 @@
 ---
 // import GC from "../components/GC.astro";
-import GCTable from '../components/GCTable.astro';
+import GCard from '../components/GCard.astro';
 import Layout from "../layouts/Layout.astro";
 
 const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/ReverseRepo/get?app=wzq';
@@ -8,6 +8,7 @@ const response = await fetch(url);
 const json =  await response.json();
 const isError = json == null || json.code != 0
 const data = json.data.data;
+const bestOnGivenDay = json.data.bestOnGivenDay;
 const szData = data.sz;
 const shData = data.sh;
 const requestUrl =  new URL(Astro.request.url);
@@ -28,70 +29,44 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
         <input type="text" placeholder={buyAmount} class="input input-bordered" id="buyAmount" />
         <span>万元</span>
         </label>
-    </div> 
-    <div class="w-full tabs tabs-boxed justify-evenly"> 
-        <div class="tab" id="sz">深市</div>
-        <div class="tab tab-active" id="sh">沪市</div>
     </div>
-    <div class="overflow-x-auto">
-        <table class="table table-xs md:table-md">
-            <thead>
-            <tr>
-                <th></th>
-                <th>预期收益率</th>
-                <th>每10万收益</th>
-                <th>资金锁定时长</th>
-                <th>最终收益计算/手续费</th>
-            </tr>
-            </thead>
-            <tbody id="szItem" class="hidden">
-            {
-            szData.map(item => (
-                <GCTable item={item} buyAmount={buyAmount * 10000}/>   
-            ))
-            }
-            </tbody>
 
-            <tbody id="shItem">
-            {
-            shData.map(item => (
-                <GCTable item={item} buyAmount={buyAmount * 10000}/>
-            ))
-            }
-            </tbody>
-        </table>
+    <div role="tablist" class="tabs tabs-bordered tabs-lg">
+        <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="深市" />
+        <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
+            <div class="w-full mx-auto">
+                {
+                    szData.map(item => {
+                        if(bestOnGivenDay.sc == 'sz' && bestOnGivenDay.term == item.term) {
+                            item.bestOnGivenDay = true;
+                        }
+                       return <GCard item={item} buyAmount={Number(buyAmount * 10000)} />
+                    } )
+                }   
+            </div>
+        </div>
+
+        <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="沪市" checked />
+        <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
+            <div class="w-full mx-auto">
+                {
+                    shData.map(item => {
+                        if(bestOnGivenDay.sc == 'sh' && bestOnGivenDay.term == item.term) {
+                            item.bestOnGivenDay = true;
+                        }
+                        return <GCard item={item} buyAmount={Number(buyAmount * 10000)} />
+                    } )
+                }   
+            </div>
+        </div>
     </div>
+
     }
+    
    </div>
 </Layout>
 
 <script>
-    function toggle(e) {
-        let sz = document.querySelector('div#sz');
-        let sh = document.querySelector('div#sh');
-        sz.className = 'tab';
-        sh.className = 'tab';
-        e.target.className += ' tab-active';
-
-        let szItem = document.querySelector('#szItem');
-        let shItem = document.querySelector('#shItem');
-        shItem.className = 'hidden';
-        szItem.className = 'hidden';
-
-        if(e.target.id =='sz') {
-            szItem.className = 'dispaly';
-        } 
-        if(e.target.id =='sh') {
-            shItem.className = 'dispaly';
-        }
-        
-
-    }
-
-    document.querySelector('#sz')?.addEventListener('click', toggle);
-    document.querySelector('#sh')?.addEventListener('click', toggle);
-
-
 
     let buyAmount = document.querySelector('#buyAmount');
     buyAmount.addEventListener('blur', function(e) {
