@@ -17,7 +17,7 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 ---
 
 <Layout  title="国债逆回购">
-   <div class="mx-auto w-full max-w-2xl">
+   <div class="mx-auto w-full min-w-max max-w-2xl">
     {
         isError && <p> 请求数据错误 </p>
     }
