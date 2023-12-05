@@ -30,6 +30,16 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
         <span>万元</span>
         </label>
     </div>
+    <div class="w-full mx-auto">
+                {
+                    szData.map(item => {
+                        if(bestOnGivenDay.sc == 'sz' && bestOnGivenDay.term == item.term) {
+                            item.bestOnGivenDay = true;
+                        }
+                       return <GCard item={item} buyAmount={Number(buyAmount * 10000)} />
+                    } )
+                }   
+    </div>
 
     <div role="tablist" class="tabs tabs-bordered tabs-lg w-full">
         <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="深市" />
