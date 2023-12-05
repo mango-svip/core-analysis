@@ -68,8 +68,6 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 
 <script>
 
-    alert(window.innerWidth);
-
     let buyAmount = document.querySelector('#buyAmount');
     buyAmount.addEventListener('blur', function(e) {
         if(e.target.value == '') {
