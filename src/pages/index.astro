@@ -1,5 +1,6 @@
 ---
-import GC from "../components/GC.astro";
+// import GC from "../components/GC.astro";
+import GCTable from '../components/GCTable.astro';
 import Layout from "../layouts/Layout.astro";
 
 const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/ReverseRepo/get?app=wzq';
@@ -10,45 +11,56 @@ const data = json.data.data;
 const szData = data.sz;
 const shData = data.sh;
 const requestUrl =  new URL(Astro.request.url);
-const buyAmount = requestUrl.searchParams.get('buyAmount') || 100000;
+const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 
 ---
 
 <Layout  title="国债逆回购">
-   <div class="mx-auto w-96 md:w-2/5">
+   <div class="mx-auto w-full max-w-2xl text-center">
     {
         isError && <p> 请求数据错误 </p>
     }
 
     { !isError &&
-    
     <div class="form-control m-2 w-full">
         <label class="input-group justify-end">
         <span>购买金额：</span>
         <input type="text" placeholder={buyAmount} class="input input-bordered" id="buyAmount" />
-        <span>元</span>
+        <span>万元</span>
         </label>
     </div> 
     <div class="w-full tabs tabs-boxed justify-evenly"> 
         <div class="tab" id="sz">深市</div>
         <div class="tab tab-active" id="sh">沪市</div>
     </div>
+    <div class="overflow-x-auto">
+        <table class="table table-xs md:table-md">
+            <thead>
+            <tr>
+                <th></th>
+                <th>预期收益率</th>
+                <th>每10万收益</th>
+                <th>资金锁定时长</th>
+                <th>最终收益计算/手续费</th>
+            </tr>
+            </thead>
+            <tbody id="szItem" class="hidden">
+            {
+            szData.map(item => (
+                <GCTable item={item} buyAmount={buyAmount * 10000}/>   
+            ))
+            }
+            </tbody>
 
-    <div id="szItem" class="hidden">
-    {
-        szData.map(item => (
-            <GC item={item} buyAmount={buyAmount}></GC>
-        ))
-    }
+            <tbody id="shItem">
+            {
+            shData.map(item => (
+                <GCTable item={item} buyAmount={buyAmount * 10000}/>
+            ))
+            }
+            </tbody>
+        </table>
     </div>
-    <div id="shItem" class="">
-    {
-        shData.map(item => (
-            <GC item={item} buyAmount={buyAmount}></GC>
-         ))
-    }
-    </div>
-
     }
    </div>
 </Layout>
@@ -61,8 +73,8 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 100000;
         sh.className = 'tab';
         e.target.className += ' tab-active';
 
-        let szItem = document.querySelector('div#szItem');
-        let shItem = document.querySelector('div#shItem');
+        let szItem = document.querySelector('#szItem');
+        let shItem = document.querySelector('#shItem');
         shItem.className = 'hidden';
         szItem.className = 'hidden';
 
@@ -72,8 +84,6 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 100000;
         if(e.target.id =='sh') {
             shItem.className = 'dispaly';
         }
-
-
         
 
     }
