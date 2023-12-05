@@ -17,7 +17,7 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 ---
 
 <Layout  title="国债逆回购">
-   <div class="mx-auto w-full max-w-2xl text-center">
+   <div class="mx-auto w-full max-w-2xl">
     {
         isError && <p> 请求数据错误 </p>
     }
@@ -31,7 +31,7 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
         </label>
     </div>
 
-    <div role="tablist" class="tabs tabs-bordered tabs-lg w-screen">
+    <div role="tablist" class="tabs tabs-bordered tabs-lg w-full">
         <input type="radio" name="my_tabs_2" role="tab" class="tab" aria-label="深市" />
         <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-2">
             <div class="w-full mx-auto">
@@ -67,6 +67,8 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 </Layout>
 
 <script>
+
+    alert(window.innerWidth);
 
     let buyAmount = document.querySelector('#buyAmount');
     buyAmount.addEventListener('blur', function(e) {
