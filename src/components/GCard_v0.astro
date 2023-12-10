@@ -25,6 +25,10 @@ const rateMap = {
     '91':  0.00030,
     '182': 0.00030
 }
+
+const fee = (buyAmount * Number(rateMap[item.term]))
+const earnings = (buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365) - fee
+
 ---
 <div class="bg-white p-6 shadow rounded-lg mt-4">
       
@@ -42,11 +46,19 @@ const rateMap = {
     <div>资金锁定天数</div>
     <div>手续费</div>
     <div class="font-medium">{item.lockDays}</div>
-    <div class="font-medium">{(buyAmount * Number(rateMap[item.term])).toFixed(2)}</div>
+    <div class="font-medium">{ fee.toFixed(3) }</div>
     <div>每10万收益</div>
     <div>最终收益</div>
     <div class="font-medium">{item.yield}</div>
-    <div class="font-medium text-secondary">{((buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365).toFixed(2) - (buyAmount * Number(rateMap[item.term])).toFixed(2)).toFixed(2)}</div>
+    <div class="font-medium text-secondary">{ earnings.toFixed(3)}</div>
+    <div></div>
+    <div>每万元每日收益</div>
+    <div></div>
+    <div class="font-medium text-warning">
+      {( earnings / item.lockDays / buyAmount * 10000).toFixed(4) }
+    </div>
+
+
   </div>
 
 
