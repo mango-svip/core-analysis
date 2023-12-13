@@ -56,7 +56,17 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
     </div>
     <div class="hidden box-border w-full mx-auto" id="szItem">
         {
-            szData.map(item => {
+            szData.sort((item1, item2) => {
+                if(bestOnGivenDay.sc != 'sz') {
+                    return 0;
+                }
+                if(bestOnGivenDay.term == item1.term) {
+                    return -1;
+                }
+                if(bestOnGivenDay.term == item2.term) {
+                    return 1;
+                }
+            }).map(item => {
                 if(bestOnGivenDay.sc == 'sz' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
@@ -68,7 +78,17 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 
     <div class="w-full box-border mx-auto" id="shItem">
         {
-            shData.map(item => {
+            shData.sort((item1, item2) => {
+                if(bestOnGivenDay.sc != 'sh') {
+                    return 0;
+                }
+                if(bestOnGivenDay.term == item1.term) {
+                    return -1;
+                }
+                if(bestOnGivenDay.term == item2.term) {
+                    return 1;
+                }
+            }).map(item => {
                 if(bestOnGivenDay.sc == 'sh' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
