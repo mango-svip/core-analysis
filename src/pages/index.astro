@@ -48,6 +48,7 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 
     <div class="items-end flex m-2 mb-0 justify-end">
         <div class="">
+            <button class="btn bordered btn-sm btn-outline btn-primary glass" id="sortToggleByLock">按资金锁定天数排序</button>
             <button class="btn bordered btn-sm btn-outline btn-success glass" id="sortToggle">按每万元收益排序</button>
         </div>
         <div class="w-36 text-end">
@@ -151,6 +152,47 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
             const bIncome = extractNumber(b.querySelector('.font-medium.text-warning'));
 
             return bIncome - aIncome;
+            });
+
+            // 重新按排序后的顺序添加到页面
+            const parentElement = document.querySelector(targetContainer);
+            dataArray.forEach((item) => {
+            parentElement.appendChild(item);
+            });
+    })
+
+    document.querySelector("#sortToggleByLock")?.addEventListener('click', function(e) {
+        let shItem = document.querySelector('#shItem');
+        let selector = '.bg-white.p-6.shadow.rounded-lg.mt-4';
+            let targetContainer = '';
+            if(shItem?.className.indexOf('hidden') < 0) {
+                targetContainer = "#shItem";
+                selector = '#shItem > ' + selector;
+            } else {
+                targetContainer = "#szItem";
+                selector = '#szItem > ' + selector;
+            }
+            // 获取所有包含信息的父元素
+            const containers = document.querySelectorAll(selector);
+            // 将 NodeList 转换为数组
+            const dataArray = Array.from(containers);
+
+            // 按每万元收益数值排序
+            dataArray.sort((a, b) => {
+            // 从每个元素中提取收益数值，这里使用的是正则表达式提取数字
+            const extractNumber = (element) => parseInt((element.textContent.match(/\d+/))[0]);
+            const aLockDays = extractNumber(a.querySelector('[data-key=lockDays]'));
+            const bLockDays = extractNumber(b.querySelector('[data-key=lockDays]'));
+
+            const extractNumber2 = (element) => parseFloat(element.textContent.match(/\d+\.\d+/)[0]);
+            const aIncome = extractNumber2(a.querySelector('[data-key=incomePerThousand]'));
+            const bIncome = extractNumber2(b.querySelector('[data-key=incomePerThousand]'));
+
+            if(bLockDays == aLockDays) {
+                return bIncome - aIncome;
+            }
+            
+            return bLockDays - aLockDays;
             });
 
             // 重新按排序后的顺序添加到页面
