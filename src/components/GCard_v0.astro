@@ -29,6 +29,8 @@ const rateMap = {
 const fee = (buyAmount * Number(rateMap[item.term]))
 const earnings = (buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365) - fee
 
+const diff = (earnings - ( item.lockDays * 0.6 * buyAmount / 10000))
+
 ---
 <div class="bg-white p-6 shadow rounded-lg mt-4">
       
@@ -42,22 +44,34 @@ const earnings = (buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365) 
     </h2>
     <div class="text-sm font-medium text-red-500">收益率: {item.zxj}%</div>
   </div>
-  <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-    <div>资金锁定天数</div>
-    <div>手续费</div>
-    <div class="font-medium " data-key="lockDays">{item.lockDays}</div>
-    <div class="font-medium">{ fee.toFixed(3) }</div>
-    <div>每10万收益</div>
-    <div>最终收益</div>
-    <div class="font-medium">{item.yield}</div>
-    <div class="font-medium text-secondary">{ earnings.toFixed(3)}</div>
-    <div></div>
-    <div>每万元每日收益</div>
-    <div></div>
-    <div class="font-medium text-warning" data-key="incomePerThousand">
-      {( earnings / item.lockDays / buyAmount * 10000).toFixed(4) }
+  <div class="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
+    <div class="col-span-2 grid grid-cols-2  grid-rows-6 ">
+      <div>资金锁定天数</div>
+      <div>手续费</div>
+      <div class="font-medium " data-key="lockDays">{item.lockDays}</div>
+      <div class="font-medium">{ fee.toFixed(3) }</div>
+      <div>每10万收益</div>
+      <div>最终收益</div>
+      <div class="font-medium">{item.yield}</div>
+      <div class="font-medium text-secondary">{ earnings.toFixed(3)}</div>
+      <div></div>
+      <div>每万元每日收益</div>
+      <div></div>
+      <div class="font-medium text-warning" data-key="incomePerThousand">
+        {( earnings / item.lockDays / buyAmount * 10000).toFixed(4) }
+      </div>
     </div>
-
+    <div class="grid grid-cols-1  grid-rows-6 ">
+      <div></div>
+      <div></div>
+      <div>天天宝收益(0.6元/万元)</div>
+      <div class="font-medium text-primary">
+        {( item.lockDays * 0.6 * buyAmount / 10000).toFixed(2)}
+      </div>
+      <div class={diff > 0  ? "font-medium text-red-500" : "font-medium text-green-500"}>
+        差额:  { diff.toFixed(2) }
+      </div>
+    </div>
 
   </div>
 
