@@ -12,7 +12,7 @@ export interface Props {
     buyAmount: number
 }
 
-const { item, buyAmount } = Astro.props;
+const { item, buyAmount, maxIncomeItem } = Astro.props;
 
 const rateMap = {
     '1':   0.00001,
@@ -63,13 +63,16 @@ const diff = (earnings - ( item.lockDays * 0.6 * buyAmount / 10000))
     </div>
     <div class="grid grid-cols-1  grid-rows-6 ">
       <div></div>
-      <div></div>
       <div>天天宝收益(0.6元/万元)</div>
       <div class="font-medium text-primary">
         {( item.lockDays * 0.6 * buyAmount / 10000).toFixed(2)}
       </div>
       <div class={diff > 0  ? "font-medium text-red-500" : "font-medium text-green-500"}>
         差额:  { diff.toFixed(2) }
+      </div>
+      <div>混合: {maxIncomeItem.item.term + "天期 + " + (item.lockDays - maxIncomeItem.item.lockDays) + ' 天天宝'}  </div>
+      <div>
+        { (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buyAmount / 10000 + (item.lockDays - maxIncomeItem.item.lockDays) * 0.6 * buyAmount / 10000 ).toFixed(2)}
       </div>
     </div>
 

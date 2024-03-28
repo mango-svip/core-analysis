@@ -15,6 +15,40 @@ const shData = data.sh;
 const requestUrl =  new URL(Astro.request.url);
 const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 
+
+const rateMap = {
+    '1':   0.00001,
+    '2':   0.00002,
+    '3':   0.00003,
+    '4':   0.00004,
+    '7':   0.00005,
+    '14':  0.00010,
+    '28':  0.00020,
+    '91':  0.00030,
+    '182': 0.00030
+}
+
+
+
+const maxIncomePerThousandData = shData.map(item => {
+    const fee = (Number(buyAmount) * Number(rateMap[item.term]))
+    const earnings = (Number(buyAmount) * Number(item.zxj) * Number(item.lockDays)/100/365) - fee
+    return {
+        item: item,
+        maxIncome: ( earnings / item.lockDays / buyAmount * 10000).toFixed(4)
+    }
+})
+
+const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
+    return parseFloat(current.maxIncome) > parseFloat(prev.maxIncome) ? current : prev;
+}, maxIncomePerThousandData[0]);
+
+
+
+
+
+
+
 ---
 
 <Layout  title="国债逆回购">
@@ -77,7 +111,7 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
                 if(bestOnGivenDay.sc == 'sz' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
-                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} />
+                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)}  maxIncomeItem={maxItem} />
             } )
         }   
     </div>
@@ -99,7 +133,7 @@ const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
                 if(bestOnGivenDay.sc == 'sh' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
-                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} />
+                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} maxIncomeItem={maxItem} />
             } )
         }   
     </div>
