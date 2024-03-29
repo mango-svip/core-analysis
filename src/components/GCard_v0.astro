@@ -30,7 +30,8 @@ const fee = (buyAmount * Number(rateMap[item.term]))
 const earnings = (buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365) - fee
 
 const profitIndex = 0.54
-const diff = (earnings - ( item.lockDays * profitIndex * buyAmount / 10000))
+const ttbEarning = item.lockDays * profitIndex * buyAmount / 10000
+const diff = (earnings - ttbEarning )
 
 const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buyAmount / 10000 + (item.lockDays - maxIncomeItem.item.lockDays) * profitIndex * buyAmount / 10000 ).toFixed(2)
 
@@ -69,7 +70,7 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
       <div></div>
       <div>天天宝收益(profitIndex元/万元)</div>
       <div class="font-medium text-primary">
-        {( item.lockDays * profitIndex * buyAmount / 10000).toFixed(2)}
+        { ttbEarning.toFixed(2)}
         <span class={diff > 0  ? "font-medium text-red-500" : "font-medium text-green-500"}>
           { (diff > 0 ? "+": "-" ) + Math.abs(diff.toFixed(2)) }
         </span>
