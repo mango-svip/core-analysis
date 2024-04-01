@@ -76,10 +76,17 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
         </span>
       </div>
       <div></div>
-      <div>混合: {maxIncomeItem.item.term + "天期 + " + (item.lockDays - maxIncomeItem.item.lockDays) + ' 天天宝'}  </div>
-      <div class={ earnings > mixEarnings ? "text-green-500" : "text-red-500" }>
-        { mixEarnings }
-      </div>
+      {
+        (item.lockDays - maxIncomeItem.item.lockDays < 0) ? (
+          <div>混合: ---</div> 
+        ): (
+          <div>混合: {maxIncomeItem.item.term + "天期 + " + (item.lockDays - maxIncomeItem.item.lockDays) + ' 天天宝'}  </div>
+          <div class={ earnings > mixEarnings ? "text-green-500" : "text-red-500" }>
+            { mixEarnings }
+          </div>
+        )        
+      }
+      
     </div>
 
   </div>
