@@ -1,0 +1,57 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const requestUrl =  new URL(Astro.request.url);
+const loan_1 = requestUrl.searchParams.get('loan_1')|| 145
+const loan_2 = requestUrl.searchParams.get('loan_2') || 300
+
+
+console.log(requestUrl.searchParams)
+const url = "https://lggp5s77mhqf2vjftwrle4iyr40nlhis.lambda-url.ap-southeast-1.on.aws"
+
+
+const params = "loan_1=" + loan_1 + "&" + "loan_2=" + loan_2
+const data = await fetch(url + "?" + params)
+
+const output = await data.text()
+---
+
+<Layout title="贷款计算器">
+    <div class="container mx-auto my-2">
+        <div class="w-2/3 flex justify-between">
+            <div class="">
+                <div class="flex gap-2 w-full">
+                    <label class="input input-bordered input-info flex items-center gap-2">
+                        公积金贷款：<input type="text" class="" id="loan_1" value={loan_1}>w
+                    </label>
+                    <label class="input input-bordered input-info flex items-center gap-2">
+                        商业贷款：<input type="text" class="" id="loan_2" value={loan_2}>w
+                    </label>
+                </div>
+                <div>
+                    
+                    
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-neutral" id="loan-calc">计算</button>
+            </div>
+        </div>
+    
+        <hr>
+        <div class="mt-6">
+            <pre>{output}</pre>
+        </div>
+    </div>
+
+</Layout>
+
+<script>
+    document.querySelector('#loan-calc')?.addEventListener('click', e => {
+        let url = new URL(window.location.href);
+        url.searchParams.set('loan_1', document.querySelector('#loan_1').value);
+        url.searchParams.set('loan_2', document.querySelector('#loan_2').value);
+        window.location.href = url.href;
+    });
+
+</script>
