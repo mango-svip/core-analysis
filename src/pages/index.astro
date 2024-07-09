@@ -14,6 +14,7 @@ const szData = data.sz;
 const shData = data.sh;
 const requestUrl =  new URL(Astro.request.url);
 const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
+const profit = requestUrl.searchParams.get('profit') || 0.45;
 
 
 const rateMap = {
@@ -118,7 +119,7 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
                 if(bestOnGivenDay.sc == 'sz' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
-                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)}  maxIncomeItem={maxItem} />
+                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)}  maxIncomeItem={maxItem} profit={profit}/>
             } )
         }   
     </div>
@@ -140,7 +141,7 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
                 if(bestOnGivenDay.sc == 'sh' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
-                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} maxIncomeItem={maxItem} />
+                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} maxIncomeItem={maxItem} profit={profit}/>
             } )
         }   
     </div>
@@ -395,6 +396,7 @@ input:checked:focus + .switch-left + .switch-right {
         }
         let url = new URL(window.location.href);
         url.searchParams.set('buyAmount', e.target.value);
+        url.searchParams.set('profit', '0.45');
         window.location.href = url.href;
 
     })
@@ -407,6 +409,7 @@ input:checked:focus + .switch-left + .switch-right {
         }
         let url = new URL(window.location.href);
         url.searchParams.set('buyAmount', e.target.value);
+        url.searchParams.set('profit', '0.45');
         window.location.href = url.href;
     });
 

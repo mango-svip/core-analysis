@@ -12,7 +12,7 @@ export interface Props {
     buyAmount: number
 }
 
-const { item, buyAmount, maxIncomeItem } = Astro.props;
+const { item, buyAmount, maxIncomeItem, profit } = Astro.props;
 
 const rateMap = {
     '1':   0.00001,
@@ -29,7 +29,7 @@ const rateMap = {
 const fee = (buyAmount * Number(rateMap[item.term]))
 const earnings = (buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365) - fee
 
-const profitIndex = 0.45
+const profitIndex = profit || 0.45; 
 const ttbEarning = item.lockDays * profitIndex * buyAmount / 10000
 const diff = (earnings - ttbEarning )
 
