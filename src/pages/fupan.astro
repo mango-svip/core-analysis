@@ -1,7 +1,12 @@
 ---
+import { timerMessage } from "astro/dist/core/logger/core";
 import Layout from "../layouts/Layout.astro";
 
-const response = await fetch('http://flash-api.xuangubao.cn/api/pool/detail?pool_name=limit_up');
+const requestUrl =  new URL(Astro.request.url);
+const date = requestUrl.searchParams.get('date') || '';
+
+
+const response = await fetch(`http://flash-api.xuangubao.cn/api/pool/detail?pool_name=limit_up&date=${date}`);
 const data = await response.json();
 const stocks = data.data
 
