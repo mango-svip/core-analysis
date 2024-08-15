@@ -1,0 +1,56 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const response = await fetch('http://flash-api.xuangubao.cn/api/pool/detail?pool_name=limit_up');
+const data = await response.json();
+const stocks = data.data
+
+---
+
+<Layout title="涨停榜复盘">
+    <div class="container">
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-300">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="px-4 py-2 border">序号</th>
+                  <th class="px-4 py-2 border">股票代码</th>
+                  <th class="px-4 py-2 border">股票名称</th>
+                  <th class="px-4 py-2 border">连板数</th>
+                  <th class="px-4 py-2 border">涨停原因</th>
+                  <th class="px-4 py-2 border">涨停价</th>
+                  <th class="px-4 py-2 border">涨幅%</th>
+                  <th class="px-4 py-2 border">封单额(万)</th>
+                  <th class="px-4 py-2 border">封单量(手)</th>
+                  <th class="px-4 py-2 border">流通市值(亿)</th>
+                  <th class="px-4 py-2 border">首封时间</th>
+                  <th class="px-4 py-2 border">开板次数</th>
+                  <th class="px-4 py-2 border">涨停类型</th>
+                  <th class="px-4 py-2 border">涨停分析</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stocks && stocks.map((stock, index) => (
+                  <tr key={stock.symbol} class={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                    <td class="px-4 py-2 border">{index + 1}</td>
+                    <td class="px-4 py-2 border">{stock.symbol}</td>
+                    <td class="px-4 py-2 border">{stock.stock_chi_name}</td>
+                    <td class="px-4 py-2 border">{stock.limit_up_days}</td>
+                    <td class="px-4 py-2 border">{stock.surge_reason.related_plates[0].plate_name}</td>
+                    <td class="px-4 py-2 border">{stock.price.toFixed(2)}</td>
+                    <td class="px-4 py-2 border">{(stock.change_percent * 100).toFixed(2)}%</td>
+                    <td class="px-4 py-2 border">{(stock.buy_amount / 10000).toFixed(2)}</td>
+                    <td class="px-4 py-2 border">{(stock.buy_volume / 100).toFixed(0)}</td>
+                    <td class="px-4 py-2 border">{(stock.circulation_market_value / 100000000).toFixed(2)}</td>
+                    <td class="px-4 py-2 border">{new Date(stock.first_limit_up_time * 1000).toLocaleTimeString()}</td>
+                    <td class="px-4 py-2 border">{stock.break_limit_up_times}</td>
+                    <td class="px-4 py-2 border">{stock.limit_up_type}</td>
+                    <td class="px-4 py-2 border">{stock.surge_reason.related_plates.map((plate) => plate.plate_reason).join(";")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+    </div>
+
+</Layout>
