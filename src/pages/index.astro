@@ -16,7 +16,6 @@ const requestUrl =  new URL(Astro.request.url);
 const buyAmount = requestUrl.searchParams.get('buyAmount') || 10;
 const profit = requestUrl.searchParams.get('profit') || 0.45;
 
-
 const rateMap = {
     '1':   0.00001,
     '2':   0.00002,
@@ -53,7 +52,7 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
 ---
 
 <Layout  title="国债逆回购">
-   <div class="mx-auto w-full min-w-max max-w-2xl">
+   <div class="mx-auto w-full min-w-max max-w-2xl bg-gray-50">
     {
         isError && <p> 请求数据错误 </p>
     }
@@ -81,11 +80,20 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
         </div>
     </div>
 
-    <div class="items-end flex m-2 mb-0 justify-end">
-        <div class="h-20 flex items-center justify-center">
-            <button class="btn bordered btn-sm btn-outline btn-primary glass" id="sortToggleByLock">按资金锁定天数排序</button>
-            <button class="btn bordered btn-sm btn-outline btn-success glass" id="sortToggle">按每万元收益排序</button>
+    <div class="items-end flex m-2 mb-0 justify-end ">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="bg-gray-100 p-1 rounded-full inline-flex">
+                <button
+                class="px-4 py-2 rounded-full text-sm bg-primary text-white" id="sortToggleByLock"
+                >
+                按资金锁定天数排序
+                </button>
+                <button class="px-4 py-2 rounded-full text-sm text-gray-600" id="sortToggle">
+                按每万元收益排序
+                </button>
+          </div>
         </div>
+      
         <div class="w-36 text-end">
             <!-- 
             <label class="swap">
@@ -103,7 +111,7 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
 
 
     </div>
-    <div class="hidden box-border w-full mx-auto" id="szItem">
+    <div class="hidden box-border w-full mx-auto " id="szItem">
         {
             szData.sort((item1, item2) => {
                 if(bestOnGivenDay.sc != 'sz') {
@@ -316,6 +324,17 @@ input:checked:focus + .switch-left + .switch-right {
     })
 
     document.querySelector("#sortToggle")?.addEventListener('click', function(e) {
+
+        let sortToggle = document.querySelector('#sortToggle');
+        sortToggle.classList.add('bg-primary');
+        sortToggle.classList.add('text-white');
+        sortToggle.classList.remove('text-gray-600');
+
+        let sortToggleByLock = document.querySelector('#sortToggleByLock');
+        sortToggleByLock.classList.remove('bg-primary');
+        sortToggleByLock.classList.remove('text-white');
+        sortToggleByLock.classList.add('text-gray-600');
+
         let shItem = document.querySelector('#shItem');
         let selector = '.bg-white.p-6.shadow.rounded-lg.mt-4';
             let targetContainer = '';
@@ -349,6 +368,18 @@ input:checked:focus + .switch-left + .switch-right {
     })
 
     document.querySelector("#sortToggleByLock")?.addEventListener('click', function(e) {
+
+        let sortToggle = document.querySelector('#sortToggle');
+        sortToggle.classList.remove('bg-primary');
+        sortToggle.classList.remove('text-white');
+        sortToggle.classList.add('text-gray-600');
+
+        let sortToggleByLock = document.querySelector('#sortToggleByLock');
+        sortToggleByLock.classList.add('bg-primary');
+        sortToggleByLock.classList.add('text-white');
+        sortToggleByLock.classList.remove('text-gray-600');
+
+
         let shItem = document.querySelector('#shItem');
         let selector = '.bg-white.p-6.shadow.rounded-lg.mt-4';
             let targetContainer = '';

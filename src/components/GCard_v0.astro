@@ -37,60 +37,88 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
 
 
 ---
-<div class="bg-white p-6 shadow rounded-lg mt-4">
-      
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="flex items-center space-x-2">
+
+<div class="mb-2">
+
+
+<div class="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow ">
+  <div class="grid grid-cols-3 gap-8">
+    <div>
+      <div class="text-2xl font-medium mb-2">
         {item.bestOnGivenDay && 
-            <span class="skeleton badge bg-red-500 text-white text-xs">推荐</span>
+          <span class="skeleton badge bg-red-500 text-white text-xs mr-2">推荐</span>
         }
-        <span class="text-sm font-medium">{item.term}天期</span>
-        <span class="text-sm text-gray-500">{item.availableDay}</span>
-    </h2>
-    <div class="text-sm font-medium text-red-500">收益率: {item.zxj}%</div>
-  </div>
-  <div class="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
-    <div class="col-span-2 grid grid-cols-2  grid-rows-6 ">
-      <div>资金锁定天数</div>
-      <div>手续费</div>
-      <div class="font-medium " data-key="lockDays">{item.lockDays}</div>
-      <div class="font-medium">{ fee.toFixed(3) }</div>
-      <div>每10万收益</div>
-      <div>最终收益</div>
-      <div class="font-medium">{item.yield}</div>
-      <div class="font-medium text-secondary">{ earnings.toFixed(3)}</div>
-      <div></div>
-      <div>每万元每日收益</div>
-      <div></div>
-      <div class="font-medium text-warning" data-key="incomePerThousand">
-        {( earnings / item.lockDays / buyAmount * 10000).toFixed(4) }
+        {item.term}天期
+
       </div>
+      <div class="text-gray-500 text-sm">{item.availableDay}</div>
     </div>
-    <div class="grid grid-cols-1  grid-rows-6 ">
-      <div></div>
-      <div>天天宝收益({profitIndex}元/万元)</div>
-      <div class="font-medium text-primary">
-        { ttbEarning.toFixed(2)}
-        <span class={diff > 0  ? "font-medium text-red-500" : "font-medium text-green-500"}>
-          { (diff > 0 ? "+": "-" ) + Math.abs(diff.toFixed(2)) }
+
+    <div class="space-y-4">
+
+      <div class="flex items-center justify-between">
+        <span class="text-gray-600">资金锁定天数</span>
+        <span class="font-medium">{item.lockDays}天</span>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-gray-600">手续费</span>
+        <span class="font-medium">{ fee.toFixed(3) }</span>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-gray-600">每10万收益</span>
+        <span class="font-medium text-red-500">{item.yield}</span>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-gray-600">最终收益</span>
+        <span class="font-medium text-red-500">{ earnings.toFixed(3)}</span>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-gray-600">每万元每日收益</span>
+        <span class="font-medium text-orange-500">
+          {( earnings / item.lockDays / buyAmount * 10000).toFixed(4) }
         </span>
       </div>
-      <div></div>
-      {
-        (item.lockDays - maxIncomeItem.item.lockDays < 0) ? (
-          <div>混合: ---</div> 
-        ): (
-          <div>混合: {maxIncomeItem.item.term + "天期 + " + (item.lockDays - maxIncomeItem.item.lockDays) + ' 天天宝'}  </div>
-          <div class={ earnings > mixEarnings ? "text-green-500" : "text-red-500" }>
-            { mixEarnings }
-          </div>
-        )        
-      }
-      
+
     </div>
 
+    <div class="border-l pl-8">
+
+      <div class="mb-4">
+        <div class="text-sm text-gray-500 mb-1">收益率</div>
+        <div class="text-xl font-medium text-red-500">2.095%</div>
+      </div>
+
+      <div class="mb-4">
+        <div class="text-sm text-gray-500 mb-1">
+          天天宝收益({profitIndex}元/万元)
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-lg font-medium">{ ttbEarning.toFixed(2)}</span>
+          <span class="text-green-500 text-sm">  
+            { (diff > 0 ? "+": "-" ) + Math.abs(diff.toFixed(2)) }
+          </span>
+        </div>
+      </div>
+
+      <div class="text-sm text-gray-500 mb-1">混合</div>
+          {
+            (item.lockDays - maxIncomeItem.item.lockDays < 0) ? (
+              <div class="text-gray-400">---</div>
+            ) : (
+              <div class="text-sm">
+                {maxIncomeItem.item.term + "天期 + " + (item.lockDays - maxIncomeItem.item.lockDays) + ' 天天宝'}
+              </div>
+              <div class={ earnings > mixEarnings ? "text-green-500" : "text-red-500" }>
+                { mixEarnings }
+              </div>
+            )
+          }
+      </div>
+
   </div>
-
-
 </div>
-
+</div>
