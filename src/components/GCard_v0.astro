@@ -38,7 +38,7 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
 
 ---
 
-<div class="mb-2">
+<div class="mb-2" data-key="gc">
 
 
 <div class="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow ">
@@ -58,7 +58,7 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
 
       <div class="flex items-center justify-between">
         <span class="text-gray-600">资金锁定天数</span>
-        <span class="font-medium">{item.lockDays}天</span>
+        <span class="font-medium" data-key=lockDays>{item.lockDays}天</span>
       </div>
 
       <div class="flex items-center justify-between">
@@ -78,7 +78,7 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
 
       <div class="flex items-center justify-between">
         <span class="text-gray-600">每万元每日收益</span>
-        <span class="font-medium text-orange-500">
+        <span class="font-medium text-orange-500" data-key=incomePerThousand>
           {( earnings / item.lockDays / buyAmount * 10000).toFixed(4) }
         </span>
       </div>

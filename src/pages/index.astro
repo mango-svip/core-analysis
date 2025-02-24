@@ -336,7 +336,7 @@ input:checked:focus + .switch-left + .switch-right {
         sortToggleByLock.classList.add('text-gray-600');
 
         let shItem = document.querySelector('#shItem');
-        let selector = '.bg-white.p-6.shadow.rounded-lg.mt-4';
+        let selector = '[data-key=gc]';
             let targetContainer = '';
             if(shItem?.className.indexOf('hidden') < 0) {
                 targetContainer = "#shItem";
@@ -354,8 +354,8 @@ input:checked:focus + .switch-left + .switch-right {
             dataArray.sort((a, b) => {
             // 从每个元素中提取收益数值，这里使用的是正则表达式提取数字
             const extractNumber = (element) => parseFloat(element.textContent.match(/\d+\.\d+/)[0]);
-            const aIncome = extractNumber(a.querySelector('.font-medium.text-warning'));
-            const bIncome = extractNumber(b.querySelector('.font-medium.text-warning'));
+            const aIncome = extractNumber(a.querySelector('[data-key=incomePerThousand]'));
+            const bIncome = extractNumber(b.querySelector('[data-key=incomePerThousand]'));
 
             return bIncome - aIncome;
             });
@@ -381,7 +381,7 @@ input:checked:focus + .switch-left + .switch-right {
 
 
         let shItem = document.querySelector('#shItem');
-        let selector = '.bg-white.p-6.shadow.rounded-lg.mt-4';
+        let selector = '[data-key=gc]';
             let targetContainer = '';
             if(shItem?.className.indexOf('hidden') < 0) {
                 targetContainer = "#shItem";
