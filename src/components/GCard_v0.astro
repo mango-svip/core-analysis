@@ -9,10 +9,10 @@ export interface Item {
 
 export interface Props {
 	item: Item,
-    buyAmount: number
+  buyAmount: number
 }
 
-const { item, buyAmount, maxIncomeItem, profit } = Astro.props;
+const { item, buyAmount, items, profit } = Astro.props;
 
 const rateMap = {
     '1':   0.00001,
@@ -29,11 +29,12 @@ const rateMap = {
 const fee = (buyAmount * Number(rateMap[item.term]))
 const earnings = (buyAmount * Number(item.zxj) * Number(item.lockDays)/100/365) - fee
 
+
 const profitIndex = profit || 0.45; 
 const ttbEarning = item.lockDays * profitIndex * buyAmount / 10000
 const diff = (earnings - ttbEarning )
 
-const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buyAmount / 10000 + (item.lockDays - maxIncomeItem.item.lockDays) * profitIndex * buyAmount / 10000 ).toFixed(2)
+// const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buyAmount / 10000 + (item.lockDays - maxIncomeItem.item.lockDays) * profitIndex * buyAmount / 10000 ).toFixed(2)
 
 
 ---
@@ -95,18 +96,28 @@ const mixEarnings = (maxIncomeItem.maxIncome * maxIncomeItem.item.lockDays * buy
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-gray-500">混合收益</span>
+          <div class="grid grid-cols-2 gap-x-4">
           {
-            (item.lockDays - maxIncomeItem.item.lockDays < 0) ? (
-              <div class="text-gray-400">---</div>
-            ) : (
-              <div class="text-sm">
-                {maxIncomeItem.item.term + "天期 + " + (item.lockDays - maxIncomeItem.item.lockDays) + ' 天天宝'}
-              </div>
-              <div class={ earnings > mixEarnings ? "text-green-500" : "text-red-500" }>
-                { mixEarnings }
-              </div>
-            )
+              items.map(data => {
+                let remainDays = item.lockDays - data.lockDays;
+                if(remainDays > 0) {
+                  let singleEarnings = (buyAmount * Number(data.zxj) * Number(data.lockDays)/100/365) - (buyAmount * Number(rateMap[data.term]));
+                  let mixEarnings = (Number(singleEarnings) + remainDays * profitIndex * buyAmount / 10000 ).toFixed(2);
+                  return (
+                    <div class="text-sm">
+                      {data.term + "天期 + " + (remainDays) + ' 天天宝'}
+                    </div>
+                    <div class={ earnings > mixEarnings ? "text-green-500" : "text-red-500" }>
+                      { mixEarnings }
+                    </div>
+                  )
+                
+                }
+
+              })
+            
           }
+          </div>
         </div>
       </div>
     </div>

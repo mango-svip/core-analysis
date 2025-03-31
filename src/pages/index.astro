@@ -39,11 +39,6 @@ const maxIncomePerThousandData = shData.map(item => {
     }
 })
 
-const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
-    return parseFloat(current.maxIncome) > parseFloat(prev.maxIncome) ? current : prev;
-}, maxIncomePerThousandData[0]);
-
-
 
 
 
@@ -127,7 +122,7 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
                 if(bestOnGivenDay.sc == 'sz' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
-                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)}  maxIncomeItem={maxItem} profit={profit}/>
+                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)}  items={szData} profit={profit}/>
             } )
         }   
     </div>
@@ -149,7 +144,7 @@ const maxItem = maxIncomePerThousandData.reduce((prev, current) => {
                 if(bestOnGivenDay.sc == 'sh' && bestOnGivenDay.term == item.term) {
                     item.bestOnGivenDay = true;
                 }
-                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} maxIncomeItem={maxItem} profit={profit}/>
+                return <GCardV0 item={item} buyAmount={Number(buyAmount * 10000)} items={shData} profit={profit}/>
             } )
         }   
     </div>
