@@ -1,0 +1,702 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../db/supabase";
+
+// 获取URL中的日期参数，如果没有则使用当前日期
+const requestUrl = new URL(Astro.request.url);
+const date = requestUrl.searchParams.get('date') || new Date().toISOString().split('T')[0];
+
+// 这里是示例数据，实际使用时可以替换为API调用
+// 预留API接口，用户可以自定义实现
+
+
+// 解析所有可能的板块分类
+const allPlates = new Set();
+const excludedPlates = new Set();
+excludedPlates.add('ST股');
+excludedPlates.add('强势人气股');
+
+
+// 获取URL中的板块筛选参数
+const selectedPlate = requestUrl.searchParams.get('plate') || '';
+
+// 从Supabase获取数据
+async function fetchStockData(date, selectedPlate) {
+  const query = supabase
+    .from('stocks')
+    .select('*')
+    .eq('date', date);
+  if (selectedPlate) {
+    query.like('plates', '%'+ selectedPlate + '%');
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching data:', error);
+  }
+  return data || [];
+}
+
+// 获取数据
+const stocks = await fetchStockData(date, selectedPlate);
+
+stocks.forEach(stock => {
+  if (stock.plates) {
+    stock.plates.split(',').forEach(plate => {
+        if (!excludedPlates.has(plate.trim())) {
+            allPlates.add(plate.trim());
+        }
+            
+    });
+  }
+});
+const platesList = Array.from(allPlates);
+---
+
+<Layout title="股票数据分析看板">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">股票数据分析看板</h1>
+    
+    <!-- 日期选择器 -->
+    <div class="mb-6">
+      <form id="dateForm" class="flex flex-col sm:flex-row justify-center items-center gap-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">选择日期</span>
+          </label>
+          <input 
+            type="date" 
+            id="dateInput" 
+            name="date" 
+            value={date} 
+            class="input input-bordered w-full max-w-xs" 
+          />
+        </div>
+        <button type="submit" class="btn btn-primary mt-6">筛选</button>
+      </form>
+    </div>
+    <!-- 数据统计卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <!-- 股票总数统计 -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+          <h2 class="card-title justify-center">今日涨停股票</h2>
+          <p class="text-4xl font-bold text-primary">{stocks.length}</p>
+          <p class="text-sm">支持按板块筛选查看</p>
+        </div>
+      </div>
+      
+      <!-- 平均涨幅统计 -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+          <h2 class="card-title justify-center">平均涨幅</h2>
+          <p class="text-4xl font-bold text-accent">
+            {(stocks.reduce((sum, stock) => sum + stock.change_percent, 0) / (stocks.length || 1)).toFixed(2)}%
+          </p>
+          <p class="text-sm">所有涨停股票平均涨幅</p>
+        </div>
+      </div>
+      
+      <!-- 最热门板块统计 -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+          <h2 class="card-title justify-center">最热门板块</h2>
+          {(() => {
+            // 统计各板块的股票数量
+            const plateCountMap = new Map();
+            stocks.forEach(stock => {
+              if (stock.plates) {
+                stock.plates.split(',').forEach(plate => {
+                  const trimmedPlate = plate.trim();
+                  plateCountMap.set(trimmedPlate, (plateCountMap.get(trimmedPlate) || 0) + 1);
+                });
+              }
+            });
+            
+            // 找出出现次数最多的板块
+            let hotPlate = "无";
+            let maxCount = 0;
+            plateCountMap.forEach((count, plate) => {
+              if (count > maxCount) {
+                maxCount = count;
+                hotPlate = plate;
+              }
+            });
+            
+            return (
+              <>
+                <p class="text-2xl font-bold text-secondary">{hotPlate}</p>
+                <p class="text-sm">共有 {maxCount} 只股票</p>
+              </>
+            );
+          })()}
+        </div>
+      </div>
+    </div>   
+    <!-- 图表分析区域 -->
+    <div class="mt-8">
+      <h2 class="text-2xl font-semibold mb-6 text-center">市场热点分析</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- 板块分布饼图 -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title">板块分布</h2>
+            <div class="h-80">
+              <canvas id="plateDistributionChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 涨幅排行柱状图 -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title">涨幅排行</h2>
+            <div class="h-80">
+              <canvas id="changePercentChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增统计维度 -->
+      <h2 class="text-2xl font-semibold mb-6 text-center">更多市场维度分析</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- 首次涨停时间分布图 -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title">首次涨停时间分布</h2>
+            <div class="h-80">
+              <canvas id="firstLimitUpTimeChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 连板数量统计图 -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title">连板数量统计</h2>
+            <div class="h-80">
+              <canvas id="limitUpDaysChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 板块分类筛选 -->
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold mb-3">按板块筛选</h2>
+      <div class="flex flex-wrap gap-2 justify-center">
+        <a href={`/dashboard?date=${date}`} class={`badge ${!selectedPlate ? 'badge-primary' : 'badge-outline'} p-3`}>全部</a>
+        {platesList.map(plate => (
+          <a 
+            href={`/dashboard?date=${date}&plate=${encodeURIComponent(plate)}`} 
+            class={`badge ${selectedPlate === plate ? 'badge-primary' : 'badge-outline'} p-3`}
+          >
+            {plate}
+          </a>
+        ))}
+      </div>
+    </div>
+    
+
+    
+    <!-- 数据表格 -->
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead>
+          <tr class="bg-base-200">
+            <th class="px-4 py-2">序号</th>
+            <th class="px-4 py-2">日期</th>
+            <th class="px-4 py-2">股票代码</th>
+            <th class="px-4 py-2">股票名称</th>
+            <th class="px-4 py-2">连板数</th>
+            <th class="px-4 py-2">涨停原因</th>
+            <th class="px-4 py-2">价格</th>
+            <th class="px-4 py-2">涨幅%</th>
+            <th class="px-4 py-2">首次涨停</th>
+            <th class="px-4 py-2">最后涨停</th>
+            <th class="px-4 py-2">开板次数</th>
+            <th class="px-4 py-2">板块</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stocks.map((stock, index) => (
+            <tr key={index} class="hover">
+              <td class="px-4 py-2">{index + 1}</td>
+              <td class="px-4 py-2">{stock.date}</td>
+              <td class="px-4 py-2">{stock.stock_code}</td>
+              <td class="px-4 py-2">{stock.stock_name}</td>
+              <td class="px-4 py-2">{stock.limit_up_days}</td>
+              <td class="px-4 py-2">{stock.surge_reason}</td>
+              <td class="px-4 py-2">{stock.price}</td>
+              <td class="px-4 py-2">{stock.change_percent.toFixed(2)}%</td>
+              <td class="px-4 py-2">{stock.first_limit_up}</td>
+              <td class="px-4 py-2">{stock.last_limit_up}</td>
+              <td class="px-4 py-2">{stock.break_limit_up_times}</td>
+              <td class="px-4 py-2">
+                <div class="flex flex-wrap gap-1">
+                  {stock.plates && stock.plates.split(',').map((plate, i) => (
+                    <span key={i} class="badge badge-sm">{plate.trim()}</span>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    </div>
+    
+
+  </div>
+  
+  <!-- 将服务端数据传递给客户端 -->
+  <script define:vars={{ stocks }}>
+    // 将服务端数据存储为全局变量，使客户端JavaScript可以访问
+    window.stocksData = stocks;
+  </script>
+
+  <script>
+    // 导入Chart.js
+    import Chart from 'chart.js/auto';
+    
+    // 日期表单提交处理
+    document.getElementById('dateForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const date = document.getElementById('dateInput').value;
+      const currentUrl = new URL(window.location.href);
+      const plate = currentUrl.searchParams.get('plate') || '';
+      
+      let newUrl = `/dashboard?date=${date}`;
+      if (plate) {
+        newUrl += `&plate=${encodeURIComponent(plate)}`;
+      }
+      
+      window.location.href = newUrl;
+    });
+
+    // 页面加载完成后初始化图表
+    document.addEventListener('DOMContentLoaded', function() {
+      // 使用全局变量中的股票数据
+      const stocksData = window.stocksData;
+      
+      // 创建板块分布饼图
+      createPlateDistributionChart(stocksData);
+      
+      // 创建涨幅排行柱状图
+      createChangePercentChart(stocksData);
+      
+      // 创建首次涨停时间分布图
+      createFirstLimitUpTimeChart(stocksData);
+      
+      // 创建连板数量统计图
+      createLimitUpDaysChart(stocksData);
+    });
+    
+    // 创建板块分布饼图
+    function createPlateDistributionChart(stocks) {
+      // 统计各板块的股票数量
+      const plateCountMap = new Map();
+      
+      stocks.forEach(stock => {
+        if (stock.plates) {
+          const plateArray = stock.plates.split(',');
+          plateArray.forEach(plate => {
+            const trimmedPlate = plate.trim();
+            plateCountMap.set(trimmedPlate, (plateCountMap.get(trimmedPlate) || 0) + 1);
+          });
+        }
+      });
+      
+      // 按数量排序并取前10个板块
+      const sortedPlates = Array.from(plateCountMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      
+      // 准备图表数据
+      const labels = sortedPlates.map(item => item[0]);
+      const data = sortedPlates.map(item => item[1]);
+      
+      // 使用预设的和谐配色方案，而不是随机颜色
+      const backgroundColors = [
+        'rgba(255, 99, 132, 0.8)',   // 红色
+        'rgba(54, 162, 235, 0.8)',  // 蓝色
+        'rgba(255, 206, 86, 0.8)',  // 黄色
+        'rgba(75, 192, 192, 0.8)',  // 青色
+        'rgba(153, 102, 255, 0.8)', // 紫色
+        'rgba(255, 159, 64, 0.8)',  // 橙色
+        'rgba(199, 199, 199, 0.8)', // 灰色
+        'rgba(83, 102, 255, 0.8)',  // 蓝紫色
+        'rgba(78, 205, 196, 0.8)',  // 薄荷色
+        'rgba(232, 65, 24, 0.8)'    // 深红色
+      ];
+      
+      // 创建饼图
+      const ctx = document.getElementById('plateDistributionChart');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'doughnut', // 使用环形图而不是饼图，更美观
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '股票数量',
+              data: data,
+              backgroundColor: backgroundColors,
+              borderColor: 'white',
+              borderWidth: 2,
+              hoverOffset: 10 // 鼠标悬停时突出显示
+            }]
+          },
+          options: {
+            responsive: true,
+            cutout: '50%', // 环形图中间空白的大小
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  font: {
+                    size: 12,
+                    family: '"Helvetica Neue", "Helvetica", "Arial", sans-serif'
+                  },
+                  padding: 15,
+                  usePointStyle: true, // 使用点样式而不是方块
+                  pointStyle: 'circle'
+                }
+              },
+              title: {
+                display: true,
+                text: '热门板块分布(Top 10)',
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                },
+                padding: {
+                  top: 10,
+                  bottom: 15
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = Math.round((value / total) * 100);
+                    return `${label}: ${value}个 (${percentage}%)`;
+                  }
+                },
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                padding: 10,
+                cornerRadius: 6,
+                titleFont: {
+                  size: 14
+                },
+                bodyFont: {
+                  size: 13
+                }
+              },
+              // 添加数据标签插件
+              datalabels: {
+                formatter: (value, ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return percentage > 4 ? `${percentage}%` : '';
+                },
+                color: 'white',
+                font: {
+                  weight: 'bold',
+                  size: 11
+                },
+                textStrokeColor: 'rgba(0, 0, 0, 0.5)',
+                textStrokeWidth: 1,
+                textShadowBlur: 3,
+                textShadowColor: 'rgba(0, 0, 0, 0.5)',
+                anchor: 'center',
+                align: 'center',
+                offset: 0,
+                display: function(ctx) {
+                  return ctx.dataset.data[ctx.dataIndex] > 0;
+                }
+              }
+            },
+            layout: {
+              padding: 10
+            },
+            animation: {
+              animateScale: true,
+              animateRotate: true
+            }
+          }
+        });
+      }
+    }
+    
+    // 创建板块股票数量排行柱状图
+    function createChangePercentChart(stocks) {
+      // 统计各板块的股票数量
+      const plateCountMap = new Map();
+      stocks.forEach(stock => {
+        if (stock.plates) {
+          stock.plates.split(',').forEach(plate => {
+            const trimmedPlate = plate.trim();
+            plateCountMap.set(trimmedPlate, (plateCountMap.get(trimmedPlate) || 0) + 1);
+          });
+        }
+      });
+      
+      // 按数量排序并取前15个板块
+      const sortedPlates = Array.from(plateCountMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15);
+      
+      // 准备图表数据
+      const labels = sortedPlates.map(item => item[0]);
+      const data = sortedPlates.map(item => item[1]);
+      
+      // 创建柱状图
+      const ctx = document.getElementById('changePercentChart');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '股票数量',
+              data: data,
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            indexAxis: 'y',  // 水平柱状图
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: true,
+                text: '板块股票数量排行(Top 15)'
+              }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return value + '只';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+    
+    // 创建首次涨停时间分布图
+    function createFirstLimitUpTimeChart(stocks) {
+      // 按时间段统计首次涨停的股票数量
+      const timeDistribution = new Map();
+      
+      // 初始化时间段
+      const timeSlots = [
+        '09:30', '09:45', '10:00', '10:15', '10:30',
+        '10:45', '11:00', '11:15', '11:30', '13:00',
+        '13:15', '13:30', '13:45', '14:00', '14:15',
+        '14:30', '14:45', '15:00'
+      ];
+      
+      timeSlots.forEach(time => timeDistribution.set(time, 0));
+      
+      // 统计每个时间段的首次涨停数量
+      stocks.forEach(stock => {
+        if (stock.first_limit_up) {
+          const time = stock.first_limit_up;
+          // 找到对应的时间段
+          for (let i = 0; i < timeSlots.length; i++) {
+            if (time <= timeSlots[i]) {
+              timeDistribution.set(timeSlots[i], timeDistribution.get(timeSlots[i]) + 1);
+              break;
+            }
+          }
+        }
+      });
+      
+      // 创建图表
+      const ctx = document.getElementById('firstLimitUpTimeChart');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: Array.from(timeDistribution.keys()),
+            datasets: [{
+              label: '首次涨停数量',
+              data: Array.from(timeDistribution.values()),
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: true,
+                text: '首次涨停时间分布'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `${context.parsed.y}只股票`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: '时间'
+                }
+              },
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: '股票数量'
+                },
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+    
+    // 创建连板数量统计图
+    function createLimitUpDaysChart(stocks) {
+      // 统计不同连板数的股票在各板块中的分布
+      const limitUpDistribution = new Map();
+      const limitUpDays = new Set();
+      const excludedPlates = new Set();
+      excludedPlates.add('ST股');
+      excludedPlates.add('强势人气股');
+      excludedPlates.add('复牌股');
+      
+      // 首先收集所有的连板数和板块
+      stocks.forEach(stock => {
+        if (stock.limit_up_days && stock.plates) {
+          limitUpDays.add(stock.limit_up_days);
+          stock.plates.split(',').forEach(plate => {
+            const trimmedPlate = plate.trim();
+            if (!limitUpDistribution.has(trimmedPlate)) {
+              limitUpDistribution.set(trimmedPlate, new Map());
+            }
+            const plateData = limitUpDistribution.get(trimmedPlate);
+            plateData.set(stock.limit_up_days, (plateData.get(stock.limit_up_days) || 0) + 1);
+          });
+        }
+      });
+    
+      // 转换数据为图表所需格式
+      const sortedLimitUpDays = Array.from(limitUpDays).sort((a, b) => a - b);
+      const datasets = [];
+      const colors = [
+        'rgba(255, 99, 132, 0.8)',
+        'rgba(54, 162, 235, 0.8)',
+        'rgba(255, 206, 86, 0.8)',
+        'rgba(75, 192, 192, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 159, 64, 0.8)'
+      ];
+    
+      // 按连板数生成数据集
+      sortedLimitUpDays.forEach((days, index) => {
+        const data = [];
+        limitUpDistribution.forEach((plateData, plate) => {
+          data.push(plateData.get(days) || 0);
+        });
+        
+        datasets.push({
+          label: `${days}板`,
+          data: data,
+          backgroundColor: colors[index % colors.length],
+          stack: 'Stack 0'
+        });
+      });
+    
+      // 获取前10个有最多连板股票的板块
+      const plateStockCounts = Array.from(limitUpDistribution.entries()).map(([plate, data]) => {
+        const total = Array.from(data.values()).reduce((sum, count) => sum + count, 0);
+        return [plate, total];
+      });
+      const top10Plates = plateStockCounts
+        .sort((a, b) => b[1] - a[1])
+        .filter(item => !excludedPlates.has(item[0]))
+        .slice(0, 10)
+        .map(item => item[0]);
+    
+      // 创建图表
+      const ctx = document.getElementById('limitUpDaysChart');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: top10Plates,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: true,
+                text: '热门板块连板股票分布(Top 10)'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.dataset.label || '';
+                    const value = context.raw || 0;
+                    return `${label}: ${value}只`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                stacked: true,
+                title: {
+                  display: true,
+                  text: '板块'
+                }
+              },
+              y: {
+                stacked: true,
+                title: {
+                  display: true,
+                  text: '股票数量'
+                },
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+  </script>
+</Layout>
