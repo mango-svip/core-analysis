@@ -29,10 +29,15 @@ async function fetchStockData(date, selectedPlate) {
   if (selectedPlate) {
     query.like('plates', '%'+ selectedPlate + '%');
   }
-  const { data, error } = await query;
+  let { data, error } = await query;
   if (error) {
     console.error('Error fetching data:', error);
   }
+  data = data?.filter(r => {
+    if (!r.plates) return true;
+    const platesArray = r.plates.split(',').map(plate => plate.trim());
+    return !platesArray.some(plate => excludedPlates.has(plate));
+});
   return data || [];
 }
 
