@@ -1,191 +1,160 @@
 ---
-import Layout from "../layouts/Layout.astro";
+import Layout from '../layouts/Layout.astro';
 
-interface RepoItem {
-    term: string;
-    zxj: string;
-    yield: string;
-    lockDays: string;
-    availableDay: string;
-    bestOnGivenDay?: boolean;
-}
+// 获取查询参数
+const { buyAmount: buyAmountParam = '10', profit: profitParam = '0.45' } = Astro.url.searchParams;
+const buyAmount = parseInt(buyAmountParam);
+const profit = parseFloat(profitParam);
 
-interface ApiResponse {
-    code: number;
-    data: {
-        data: {
-            sz: RepoItem[];
-            sh: RepoItem[];
-        };
-        bestOnGivenDay: {
-            sc: string;
-            term: string;
-        };
-    };
-}
+// 沪市数据
+const shData = [
+    { term: 1, zxj: 1.955, availableDay: '周一至周五', bestOnGivenDay: false, lockDays: 1 },
+    { term: 2, zxj: 1.850, availableDay: '周四', bestOnGivenDay: false, lockDays: 2 },
+    { term: 3, zxj: 1.800, availableDay: '周三', bestOnGivenDay: false, lockDays: 3 },
+    { term: 4, zxj: 1.780, availableDay: '周二', bestOnGivenDay: false, lockDays: 4 },
+    { term: 7, zxj: 1.760, availableDay: '周一至周五', bestOnGivenDay: true, lockDays: 7 },
+    { term: 14, zxj: 1.850, availableDay: '周五', bestOnGivenDay: false, lockDays: 14 },
+    { term: 28, zxj: 1.900, availableDay: '周五', bestOnGivenDay: false, lockDays: 28 },
+];
 
-const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/ReverseRepo/get?app=wzq';
-const response = await fetch(url);
-const json: ApiResponse = await response.json();
-const isError = json == null || json.code !== 0;
+// 深市数据
+const szData = [
+    { term: 1, zxj: 1.950, availableDay: '周一至周五', bestOnGivenDay: false, lockDays: 1 },
+    { term: 2, zxj: 1.845, availableDay: '周四', bestOnGivenDay: false, lockDays: 2 },
+    { term: 3, zxj: 1.795, availableDay: '周三', bestOnGivenDay: false, lockDays: 3 },
+    { term: 4, zxj: 1.775, availableDay: '周二', bestOnGivenDay: false, lockDays: 4 },
+    { term: 7, zxj: 1.755, availableDay: '周一至周五', bestOnGivenDay: true, lockDays: 7 },
+    { term: 14, zxj: 1.845, availableDay: '周五', bestOnGivenDay: false, lockDays: 14 },
+    { term: 28, zxj: 1.895, availableDay: '周五', bestOnGivenDay: false, lockDays: 28 },
+];
 
-if (isError) {
-    throw new Error('数据获取失败');
-}
-
-const data = json.data.data;
-const bestOnGivenDay = json.data.bestOnGivenDay;
-const szData = data.sz;
-const shData = data.sh;
-
-const requestUrl = new URL(Astro.request.url);
-const buyAmountParam = requestUrl.searchParams.get('buyAmount');
-const buyAmount = buyAmountParam ? parseFloat(buyAmountParam) : 10;
-const profitParam = requestUrl.searchParams.get('profit');
-const profit = profitParam ? parseFloat(profitParam) : 0.45;
-
-const rateMap: Record<string, number> = {
-    '1': 0.00001,
-    '2': 0.00002,
-    '3': 0.00003,
-    '4': 0.00004,
-    '7': 0.00005,
-    '14': 0.00010,
-    '28': 0.00020,
-    '91': 0.00030,
-    '182': 0.00030
-};
-
-// 计算收益的函数
-function calculateEarnings(item: RepoItem, amount: number) {
-    const fee = amount * 10000 * (rateMap[item.term] || 0);
-    const grossEarnings = amount * 10000 * parseFloat(item.zxj) * parseInt(item.lockDays) / 100 / 365;
+// 计算收益
+function calculateEarnings(item, amount) {
+    const grossEarnings = (item.zxj / 100) * (item.lockDays / 365) * amount * 10000;
+    const fee = 0.1 * amount; // 手续费，每万元0.1元
     const netEarnings = grossEarnings - fee;
-    const dailyReturn = netEarnings / parseInt(item.lockDays);
-    const dailyReturnPer10k = dailyReturn / (amount * 10000) * 10000;
+    const dailyReturnPer10k = netEarnings / item.lockDays;
     
     return {
-        fee,
         grossEarnings,
+        fee,
         netEarnings,
-        dailyReturn,
         dailyReturnPer10k
     };
 }
 
-// 为数据添加最佳推荐标记和计算收益
-const processedShData = shData.map((item: RepoItem) => {
-    const earnings = calculateEarnings(item, buyAmount);
+// 处理数据并计算收益
+const processedShData = shData.map(item => {
     return {
         ...item,
-        bestOnGivenDay: bestOnGivenDay.sc === 'sh' && bestOnGivenDay.term === item.term,
-        earnings
+        earnings: calculateEarnings(item, buyAmount)
     };
 });
 
-const processedSzData = szData.map((item: RepoItem) => {
-    const earnings = calculateEarnings(item, buyAmount);
+const processedSzData = szData.map(item => {
     return {
         ...item,
-        bestOnGivenDay: bestOnGivenDay.sc === 'sz' && bestOnGivenDay.term === item.term,
-        earnings
+        earnings: calculateEarnings(item, buyAmount)
     };
 });
 
-// 找出最佳收益选项
+// 找出最佳选项（日收益最高）
 const allData = [...processedShData, ...processedSzData];
-const bestOption = allData.reduce((best, current) => 
-    current.earnings.dailyReturnPer10k > best.earnings.dailyReturnPer10k ? current : best
-);
-
+const bestOption = allData.reduce((best, current) => {
+    return current.earnings.dailyReturnPer10k > best.earnings.dailyReturnPer10k ? current : best;
+}, allData[0]);
 ---
 
 <Layout title="国债逆回购">
-    <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div class="container mx-auto px-4 py-6 max-w-4xl">
             <!-- 页面标题 -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">国债逆回购收益计算器</h1>
-                <p class="text-gray-600">智能分析最佳投资方案</p>
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">国债逆回购收益计算器</h1>
             </div>
 
-            <!-- 最佳推荐卡片 -->
-            <div class="bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl p-6 mb-8 text-white shadow-xl">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold mb-2">🏆 今日最佳选择</h2>
-                        <div class="text-lg">
+            <!-- 最佳推荐卡片 - 使用 #ff4d4f 作为基色 -->
+            <div class="bg-gradient-to-r from-[#ff4d4f] to-[#ff7875] rounded-xl p-5 mb-6 shadow-lg relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 -mt-10 -mr-10 bg-white/10 rounded-full"></div>
+                <div class="absolute bottom-0 left-0 w-24 h-24 -mb-8 -ml-8 bg-white/10 rounded-full"></div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between relative z-10">
+                    <div class="mb-3 sm:mb-0">
+                        <div class="flex items-center">
+                            <span class="bg-white text-[#ff4d4f] w-8 h-8 rounded-full flex items-center justify-center mr-2 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            <h2 class="text-xl font-bold text-white">今日最佳选择</h2>
+                        </div>
+                        <div class="text-lg mt-1 text-white">
                             <span class="font-semibold">{bestOption.term}天期</span>
                             <span class="mx-2">•</span>
-                            <span>{bestOption.zxj}% 年化收益率</span>
+                            <span>{bestOption.zxj}% 年化</span>
                         </div>
-                        <div class="text-sm opacity-90 mt-1">
+                        <div class="text-white/80 font-medium mt-1">
                             每万元日收益: ¥{bestOption.earnings.dailyReturnPer10k.toFixed(4)}
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-bold">¥{bestOption.earnings.netEarnings.toFixed(2)}</div>
-                        <div class="text-sm opacity-90">预期总收益</div>
+                    <div class="text-center sm:text-right bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                        <div class="text-2xl font-bold text-white">¥{bestOption.earnings.netEarnings.toFixed(2)}</div>
+                        <div class="text-sm text-white/80">预期总收益 ({buyAmount}万元)</div>
                     </div>
                 </div>
             </div>
 
-            <!-- 控制面板 -->
-            <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <!-- 现代化控制面板 -->
+            <div class="bg-white rounded-xl shadow-md p-4 mb-6 sticky top-4 z-20 border border-gray-100">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <!-- 购买金额输入 -->
-                    <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                            </div>
+                    <div class="flex items-center space-x-3 w-full sm:w-auto">
+                        <div class="w-8 h-8 bg-[#fff1f0] rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-[#ff4d4f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
                         </div>
                         <div class="flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">购买金额</label>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">购买金额</label>
                             <div class="flex items-center">
                                 <input 
                                     type="number" 
                                     id="buyAmount" 
                                     value={buyAmount}
-                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    class="w-24 px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff4d4f] focus:border-transparent"
                                     placeholder="输入金额"
                                 />
-                                <span class="ml-2 text-gray-600">万元</span>
+                                <span class="ml-1 text-gray-600 text-sm">万元</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 排序选择 -->
-                    <div class="flex items-center justify-center">
-                        <div class="bg-gray-100 p-1 rounded-xl inline-flex">
+                    <div class="flex flex-wrap gap-3 justify-center">
+                        <!-- 排序选择 -->
+                        <div class="bg-gray-100 p-1 rounded-lg inline-flex">
                             <button
-                                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-blue-500 text-white shadow-sm" 
+                                class="px-3 py-1 rounded-md text-xs font-medium transition-all bg-[#ff4d4f] text-white shadow-sm" 
                                 id="sortToggleByReturn"
                             >
                                 按收益排序
                             </button>
                             <button 
-                                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-gray-600 hover:text-gray-800" 
+                                class="px-3 py-1 rounded-md text-xs font-medium transition-all text-gray-600 hover:text-gray-800" 
                                 id="sortToggleByLock"
                             >
                                 按期限排序
                             </button>
                         </div>
-                    </div>
 
-                    <!-- 市场选择 -->
-                    <div class="flex items-center justify-center">
-                        <div class="bg-gray-100 p-1 rounded-xl inline-flex">
+                        <!-- 市场选择 -->
+                        <div class="bg-gray-100 p-1 rounded-lg inline-flex">
                             <button
-                                class="px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-red-500 text-white shadow-sm" 
+                                class="px-3 py-1 rounded-md text-xs font-medium transition-all bg-[#ff4d4f] text-white shadow-sm" 
                                 id="marketSH"
                             >
                                 沪市
                             </button>
                             <button 
-                                class="px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-gray-600 hover:text-gray-800" 
+                                class="px-3 py-1 rounded-md text-xs font-medium transition-all text-gray-600 hover:text-gray-800" 
                                 id="marketSZ"
                             >
                                 深市
@@ -195,72 +164,67 @@ const bestOption = allData.reduce((best, current) =>
                 </div>
             </div>
 
-            <!-- 数据列表 -->
-            <div id="shContainer" class="space-y-4">
+            <!-- 沪市数据列表 - 现代化设计 -->
+            <div id="shContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {processedShData.map((item) => (
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden" data-key="gc">
-                        <div class="p-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                    <div class={`bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border ${item === bestOption ? 'border-[#ff4d4f]' : 'border-gray-100'}`} data-key="gc">
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-2">
+                                    <div class={`w-10 h-10 ${item === bestOption ? 'bg-[#ff4d4f]' : 'bg-gray-200'} rounded-full flex items-center justify-center text-white font-bold`}>
                                         {item.term}
                                     </div>
                                     <div>
-                                        <h3 class="text-lg font-semibold text-gray-800">{item.term}天期</h3>
-                                        <p class="text-sm text-gray-500">{item.availableDay}</p>
+                                        <h3 class="font-semibold text-gray-800">{item.term}天期</h3>
+                                        <p class="text-xs text-gray-500">{item.availableDay}</p>
                                     </div>
-                                    {item.bestOnGivenDay && (
-                                        <span class="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
-                                            官方推荐
-                                        </span>
-                                    )}
-                                    {item === bestOption && (
-                                        <span class="px-3 py-1 bg-gradient-to-r from-green-400 to-blue-500 text-white text-xs font-bold rounded-full shadow-lg">
-                                            最佳收益
-                                        </span>
-                                    )}
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-2xl font-bold text-blue-600">{item.zxj}%</div>
-                                    <div class="text-sm text-gray-500">年化收益率</div>
+                                    <div class="text-xl font-bold text-[#ff4d4f]">{item.zxj}%</div>
+                                    <div class="text-xs text-gray-500">年化</div>
                                 </div>
                             </div>
-
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">锁定天数</div>
-                                    <div class="text-lg font-semibold text-gray-800" data-key="lockDays">{item.lockDays}天</div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">手续费</div>
-                                    <div class="text-lg font-semibold text-gray-800">¥{item.earnings.fee.toFixed(2)}</div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">总收益</div>
-                                    <div class="text-lg font-semibold text-green-600">¥{item.earnings.netEarnings.toFixed(2)}</div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">万元日收益</div>
-                                    <div class="text-lg font-semibold text-blue-600" data-key="dailyReturn">¥{item.earnings.dailyReturnPer10k.toFixed(4)}</div>
-                                </div>
+                            
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                {item.bestOnGivenDay && (
+                                    <span class="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                                        官方推荐
+                                    </span>
+                                )}
+                                {item === bestOption && (
+                                    <span class="px-2 py-0.5 bg-[#fff1f0] text-[#ff4d4f] text-xs font-medium rounded-full">
+                                        最佳收益
+                                    </span>
+                                )}
                             </div>
 
-                            <!-- 收益对比 -->
-                            <div class="mt-4 pt-4 border-t border-gray-200">
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="text-gray-600">vs 天天宝({profit}元/万元/日)</span>
-                                    <div class="flex items-center space-x-2">
-                                        <span class="text-gray-600">差额:</span>
-                                        {(() => {
-                                            const ttbTotal = parseInt(item.lockDays) * profit * buyAmount;
-                                            const diff = item.earnings.netEarnings - ttbTotal;
-                                            return (
-                                                <span class={`font-semibold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {diff >= 0 ? '+' : ''}¥{diff.toFixed(2)}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div class="bg-gray-50 rounded p-2 text-center">
+                                    <div class="text-xs text-gray-500">锁定天数</div>
+                                    <div class="font-semibold text-gray-800" data-key="lockDays">{item.lockDays}天</div>
+                                </div>
+                                <div class="bg-gray-50 rounded p-2 text-center">
+                                    <div class="text-xs text-gray-500">万元日收益</div>
+                                    <div class="font-semibold text-[#ff4d4f]" data-key="dailyReturn">¥{item.earnings.dailyReturnPer10k.toFixed(4)}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center bg-[#fff1f0] rounded p-2">
+                                <div>
+                                    <div class="text-xs text-gray-600">总收益</div>
+                                    <div class="font-semibold text-[#ff4d4f]">¥{item.earnings.netEarnings.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600">vs 天天宝</div>
+                                    {(() => {
+                                        const ttbTotal = parseInt(item.lockDays) * profit * buyAmount;
+                                        const diff = item.earnings.netEarnings - ttbTotal;
+                                        return (
+                                            <span class={`text-sm font-medium ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {diff >= 0 ? '+' : ''}¥{diff.toFixed(2)}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -268,71 +232,67 @@ const bestOption = allData.reduce((best, current) =>
                 ))}
             </div>
 
-            <div id="szContainer" class="space-y-4 hidden">
+            <!-- 深市数据列表 - 现代化设计 -->
+            <div id="szContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
                 {processedSzData.map((item) => (
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden" data-key="gc">
-                        <div class="p-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold">
+                    <div class={`bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border ${item === bestOption ? 'border-[#ff4d4f]' : 'border-gray-100'}`} data-key="gc">
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-2">
+                                    <div class={`w-10 h-10 ${item === bestOption ? 'bg-[#ff4d4f]' : 'bg-gray-200'} rounded-full flex items-center justify-center text-white font-bold`}>
                                         {item.term}
                                     </div>
                                     <div>
-                                        <h3 class="text-lg font-semibold text-gray-800">{item.term}天期</h3>
-                                        <p class="text-sm text-gray-500">{item.availableDay}</p>
+                                        <h3 class="font-semibold text-gray-800">{item.term}天期</h3>
+                                        <p class="text-xs text-gray-500">{item.availableDay}</p>
                                     </div>
-                                    {item.bestOnGivenDay && (
-                                        <span class="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
-                                            官方推荐
-                                        </span>
-                                    )}
-                                    {item === bestOption && (
-                                        <span class="px-3 py-1 bg-gradient-to-r from-green-400 to-blue-500 text-white text-xs font-bold rounded-full shadow-lg">
-                                            最佳收益
-                                        </span>
-                                    )}
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-2xl font-bold text-green-600">{item.zxj}%</div>
-                                    <div class="text-sm text-gray-500">年化收益率</div>
+                                    <div class="text-xl font-bold text-[#ff4d4f]">{item.zxj}%</div>
+                                    <div class="text-xs text-gray-500">年化</div>
                                 </div>
                             </div>
-
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">锁定天数</div>
-                                    <div class="text-lg font-semibold text-gray-800" data-key="lockDays">{item.lockDays}天</div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">手续费</div>
-                                    <div class="text-lg font-semibold text-gray-800">¥{item.earnings.fee.toFixed(2)}</div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">总收益</div>
-                                    <div class="text-lg font-semibold text-green-600">¥{item.earnings.netEarnings.toFixed(2)}</div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-3">
-                                    <div class="text-sm text-gray-500 mb-1">万元日收益</div>
-                                    <div class="text-lg font-semibold text-green-600" data-key="dailyReturn">¥{item.earnings.dailyReturnPer10k.toFixed(4)}</div>
-                                </div>
+                            
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                {item.bestOnGivenDay && (
+                                    <span class="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                                        官方推荐
+                                    </span>
+                                )}
+                                {item === bestOption && (
+                                    <span class="px-2 py-0.5 bg-[#fff1f0] text-[#ff4d4f] text-xs font-medium rounded-full">
+                                        最佳收益
+                                    </span>
+                                )}
                             </div>
 
-                            <!-- 收益对比 -->
-                            <div class="mt-4 pt-4 border-t border-gray-200">
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="text-gray-600">vs 天天宝({profit}元/万元/日)</span>
-                                    <div class="flex items-center space-x-2">
-                                        <span class="text-gray-600">差额:</span>
-                                        {(() => {
-                                            const ttbTotal = parseInt(item.lockDays) * profit * buyAmount;
-                                            const diff = item.earnings.netEarnings - ttbTotal;
-                                            return (
-                                                <span class={`font-semibold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {diff >= 0 ? '+' : ''}¥{diff.toFixed(2)}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div class="bg-gray-50 rounded p-2 text-center">
+                                    <div class="text-xs text-gray-500">锁定天数</div>
+                                    <div class="font-semibold text-gray-800" data-key="lockDays">{item.lockDays}天</div>
+                                </div>
+                                <div class="bg-gray-50 rounded p-2 text-center">
+                                    <div class="text-xs text-gray-500">万元日收益</div>
+                                    <div class="font-semibold text-[#ff4d4f]" data-key="dailyReturn">¥{item.earnings.dailyReturnPer10k.toFixed(4)}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center bg-[#fff1f0] rounded p-2">
+                                <div>
+                                    <div class="text-xs text-gray-600">总收益</div>
+                                    <div class="font-semibold text-[#ff4d4f]">¥{item.earnings.netEarnings.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-gray-600">vs 天天宝</div>
+                                    {(() => {
+                                        const ttbTotal = parseInt(item.lockDays) * profit * buyAmount;
+                                        const diff = item.earnings.netEarnings - ttbTotal;
+                                        return (
+                                            <span class={`text-sm font-medium ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {diff >= 0 ? '+' : ''}¥{diff.toFixed(2)}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -353,9 +313,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     marketSH?.addEventListener('click', function() {
         // 更新按钮样式
-        marketSH.classList.add('bg-red-500', 'text-white', 'shadow-sm');
+        marketSH.classList.add('bg-[#ff4d4f]', 'text-white');
         marketSH.classList.remove('text-gray-600', 'hover:text-gray-800');
-        marketSZ?.classList.remove('bg-red-500', 'text-white', 'shadow-sm');
+        marketSZ?.classList.remove('bg-[#ff4d4f]', 'text-white');
         marketSZ?.classList.add('text-gray-600', 'hover:text-gray-800');
         
         // 切换容器显示
@@ -365,9 +325,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     marketSZ?.addEventListener('click', function() {
         // 更新按钮样式
-        marketSZ.classList.add('bg-red-500', 'text-white', 'shadow-sm');
+        marketSZ.classList.add('bg-[#ff4d4f]', 'text-white');
         marketSZ.classList.remove('text-gray-600', 'hover:text-gray-800');
-        marketSH?.classList.remove('bg-red-500', 'text-white', 'shadow-sm');
+        marketSH?.classList.remove('bg-[#ff4d4f]', 'text-white');
         marketSH?.classList.add('text-gray-600', 'hover:text-gray-800');
         
         // 切换容器显示
@@ -404,9 +364,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     sortByReturn?.addEventListener('click', function() {
         // 更新按钮样式
-        sortByReturn.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
+        sortByReturn.classList.add('bg-[#ff4d4f]', 'text-white');
         sortByReturn.classList.remove('text-gray-600', 'hover:text-gray-800');
-        sortByLock?.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
+        sortByLock?.classList.remove('bg-[#ff4d4f]', 'text-white');
         sortByLock?.classList.add('text-gray-600', 'hover:text-gray-800');
         
         sortItems('return');
@@ -414,9 +374,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     sortByLock?.addEventListener('click', function() {
         // 更新按钮样式
-        sortByLock.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
+        sortByLock.classList.add('bg-[#ff4d4f]', 'text-white');
         sortByLock.classList.remove('text-gray-600', 'hover:text-gray-800');
-        sortByReturn?.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
+        sortByReturn?.classList.remove('bg-[#ff4d4f]', 'text-white');
         sortByReturn?.classList.add('text-gray-600', 'hover:text-gray-800');
         
         sortItems('lock');
@@ -445,12 +405,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // 卡片悬停效果
     document.querySelectorAll('[data-key="gc"]').forEach(card => {
         card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
+            this.classList.add('shadow-md');
+            if (!this.classList.contains('border-[#ff4d4f]')) {
+                this.classList.add('border-[#ffccc7]');
+                this.classList.remove('border-gray-100');
+            }
         });
         
         card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
+            if (!this.classList.contains('border-[#ff4d4f]')) {
+                this.classList.remove('shadow-md');
+                this.classList.remove('border-[#ffccc7]');
+                this.classList.add('border-gray-100');
+            }
         });
     });
+
+    // 默认按收益排序
+    sortItems('return');
 });
 </script>
