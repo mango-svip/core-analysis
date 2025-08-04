@@ -2,7 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 
 // 获取查询参数
-const { buyAmount: buyAmountParam = '10', profit: profitParam = '0.45' } = Astro.url.searchParams;
+const buyAmountParam = Astro.url.searchParams.get('buyAmount') || '10';
+const profitParam = Astro.url.searchParams.get('profit') || '0.45';
 const buyAmount = parseInt(buyAmountParam);
 const profit = parseFloat(profitParam);
 
