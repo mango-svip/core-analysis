@@ -7,27 +7,43 @@ const profitParam = Astro.url.searchParams.get('profit') || '0.45';
 const buyAmount = parseInt(buyAmountParam);
 const profit = parseFloat(profitParam);
 
-// 沪市数据
-const shData = [
-    { term: 1, zxj: 1.955, availableDay: '周一至周五', bestOnGivenDay: false, lockDays: 1 },
-    { term: 2, zxj: 1.850, availableDay: '周四', bestOnGivenDay: false, lockDays: 2 },
-    { term: 3, zxj: 1.800, availableDay: '周三', bestOnGivenDay: false, lockDays: 3 },
-    { term: 4, zxj: 1.780, availableDay: '周二', bestOnGivenDay: false, lockDays: 4 },
-    { term: 7, zxj: 1.760, availableDay: '周一至周五', bestOnGivenDay: true, lockDays: 7 },
-    { term: 14, zxj: 1.850, availableDay: '周五', bestOnGivenDay: false, lockDays: 14 },
-    { term: 28, zxj: 1.900, availableDay: '周五', bestOnGivenDay: false, lockDays: 28 },
-];
 
-// 深市数据
-const szData = [
-    { term: 1, zxj: 1.950, availableDay: '周一至周五', bestOnGivenDay: false, lockDays: 1 },
-    { term: 2, zxj: 1.845, availableDay: '周四', bestOnGivenDay: false, lockDays: 2 },
-    { term: 3, zxj: 1.795, availableDay: '周三', bestOnGivenDay: false, lockDays: 3 },
-    { term: 4, zxj: 1.775, availableDay: '周二', bestOnGivenDay: false, lockDays: 4 },
-    { term: 7, zxj: 1.755, availableDay: '周一至周五', bestOnGivenDay: true, lockDays: 7 },
-    { term: 14, zxj: 1.845, availableDay: '周五', bestOnGivenDay: false, lockDays: 14 },
-    { term: 28, zxj: 1.895, availableDay: '周五', bestOnGivenDay: false, lockDays: 28 },
-];
+interface RepoItem {
+    term: string;
+    zxj: string;
+    yield: string;
+    lockDays: string;
+    availableDay: string;
+    bestOnGivenDay?: boolean;
+}
+
+interface ApiResponse {
+    code: number;
+    data: {
+        data: {
+            sz: RepoItem[];
+            sh: RepoItem[];
+        };
+        bestOnGivenDay: {
+            sc: string;
+            term: string;
+        };
+    };
+}
+
+const url = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/ReverseRepo/get?app=wzq';
+const response = await fetch(url);
+const json: ApiResponse = await response.json();
+const isError = json == null || json.code !== 0;
+
+if (isError) {
+    throw new Error('数据获取失败');
+}
+
+const data = json.data.data;
+const bestOnGivenDay = json.data.bestOnGivenDay;
+const szData = data.sz;
+const shData = data.sh;
 
 // 计算收益
 function calculateEarnings(item, amount) {
