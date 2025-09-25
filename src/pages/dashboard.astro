@@ -12,6 +12,7 @@ const date = requestUrl.searchParams.get('date') || new Date().toISOString().spl
 
 // 解析所有可能的板块分类
 const allPlates = new Set();
+const allPlatesCounter = new Map();
 const excludedPlates = new Set();
 excludedPlates.add('ST股');
 excludedPlates.add('强势人气股');
@@ -49,12 +50,13 @@ stocks.forEach(stock => {
     stock.plates.split(',').forEach(plate => {
         if (!excludedPlates.has(plate.trim())) {
             allPlates.add(plate.trim());
+            allPlatesCounter.set(plate.trim(), (allPlatesCounter.get(plate.trim()) || 0) + 1);
         }
             
     });
   }
 });
-const platesList = Array.from(allPlates);
+const platesList = Array.from(allPlates).sort((a, b) => allPlatesCounter.get(b) - allPlatesCounter.get(a));
 ---
 
 <Layout title="股票数据分析看板">
@@ -107,15 +109,7 @@ const platesList = Array.from(allPlates);
           <h2 class="card-title justify-center">最热门板块</h2>
           {(() => {
             // 统计各板块的股票数量
-            const plateCountMap = new Map();
-            stocks.forEach(stock => {
-              if (stock.plates) {
-                stock.plates.split(',').forEach(plate => {
-                  const trimmedPlate = plate.trim();
-                  plateCountMap.set(trimmedPlate, (plateCountMap.get(trimmedPlate) || 0) + 1);
-                });
-              }
-            });
+            const plateCountMap = allPlatesCounter;
             
             // 找出出现次数最多的板块
             let hotPlate = "无";
@@ -199,7 +193,7 @@ const platesList = Array.from(allPlates);
             href={`/dashboard?date=${date}&plate=${encodeURIComponent(plate)}`} 
             class={`badge ${selectedPlate === plate ? 'badge-primary' : 'badge-outline'} p-3`}
           >
-            {plate}
+            {plate}({allPlatesCounter.get(plate)})
           </a>
         ))}
       </div>
