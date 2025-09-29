@@ -45,10 +45,22 @@ const bestOnGivenDay = json.data.bestOnGivenDay;
 const szData = data.sz;
 const shData = data.sh;
 
+const rateMap = {
+    '1':   0.00001,
+    '2':   0.00002,
+    '3':   0.00003,
+    '4':   0.00004,
+    '7':   0.00005,
+    '14':  0.00010,
+    '28':  0.00020,
+    '91':  0.00030,
+    '182': 0.00030
+}
+
 // 计算收益
 function calculateEarnings(item, amount) {
     const grossEarnings = (item.zxj / 100) * (item.lockDays / 365) * amount * 10000;
-    const fee = 0.1 * amount; // 手续费，每万元0.1元
+    const fee = rateMap[item.term] * amount * 10000; // 手续费，每万元0.1元
     const netEarnings = grossEarnings - fee;
     const dailyReturnPer10k = netEarnings / item.lockDays;
     
