@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+/* Tailwind v4 theme overrides to preserve the project's original design tokens */
+@theme {
+  /* original border-radius scale (kept from the old tailwind config) */
+  --radius: 0.5rem;        /* rounded         -> 8px   */
+  --radius-md: 0.75rem;    /* rounded-md      -> 12px  */
+  --radius-lg: 1rem;       /* rounded-lg      -> 16px  */
+  --radius-xl: 1.25rem;    /* rounded-xl      -> 20px  */
+  --radius-2xl: 1.5rem;    /* rounded-2xl     -> 24px  */
+  --radius-3xl: 2rem;      /* rounded-3xl     -> 32px  */
+}
+
+/* Customize the built-in "light" daisyUI theme to match the original colors */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+
+  --color-primary: #FF4D4F;
+  --color-secondary: #52C41A;
+}
