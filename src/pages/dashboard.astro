@@ -83,6 +83,38 @@ let earlySeal = 0;
 stocks.forEach(s => { if (s.first_limit_up && s.first_limit_up <= '10:00') earlySeal++; });
 const earlyRate = totalCount ? ((earlySeal / totalCount) * 100).toFixed(1) : '0.0';
 
+// ==================== 资金与强度指标 ====================
+// 平均换手率（%）
+const avgTurnover = totalCount
+  ? (stocks.reduce((s, x) => s + (Number(x.turnover_ratio) || 0), 0) / totalCount).toFixed(2)
+  : '0.00';
+// 平均封单比（buy_lock_volume_ratio，封单/流通盘，衡量封板承接强度）
+const avgSeal = totalCount
+  ? (stocks.reduce((s, x) => s + (Number(x.buy_lock_volume_ratio) || 0), 0) / totalCount).toFixed(2)
+  : '0.00';
+// 平均流通市值（亿）+ 市值结构（小盘中盘/大盘）
+const capValues = stocks.map(s => Number(s.non_restricted_capital) || 0);
+const avgCap = capValues.length ? (capValues.reduce((a, b) => a + b, 0) / capValues.length).toFixed(1) : '0.0';
+let smallCap = 0, midCap = 0, largeCap = 0;
+capValues.forEach(c => { if (c > 0) { if (c < 50) smallCap++; else if (c < 200) midCap++; else largeCap++; } });
+const capTotal = smallCap + midCap + largeCap;
+const smallCapPct = capTotal ? ((smallCap / capTotal) * 100).toFixed(0) : '0';
+const midCapPct = capTotal ? ((midCap / capTotal) * 100).toFixed(0) : '0';
+const largeCapPct = capTotal ? ((largeCap / capTotal) * 100).toFixed(0) : '0';
+
+// 题材集中度：涨停原因 Top1 家数占比
+const reasonCounter = new Map();
+stocks.forEach(s => { const r = (s.surge_reason || '').trim(); if (r) reasonCounter.set(r, (reasonCounter.get(r) || 0) + 1); });
+const reasonList = Array.from(reasonCounter.entries()).sort((a, b) => b[1] - a[1]);
+const topReason = reasonList[0] ? reasonList[0][0] : '无';
+const topReasonCount = reasonList[0] ? reasonList[0][1] : 0;
+const topReasonShare = totalCount ? ((topReasonCount / totalCount) * 100).toFixed(1) : '0.0';
+
+// 尾盘封板（14:30 后首次封板）
+let lateSeal = 0;
+stocks.forEach(s => { if (s.first_limit_up && s.first_limit_up >= '14:30') lateSeal++; });
+const lateRate = totalCount ? ((lateSeal / totalCount) * 100).toFixed(1) : '0.0';
+
 // 连板晋级率（n板 -> n+1板 = count(n+1)/count(n)）
 const c1 = ladder[0], c2 = ladder[1], c3 = ladder[2], c4 = ladder[3], c5 = ladder[4];
 const r12 = c1 ? (c2 / c1 * 100).toFixed(1) : '0.0';
@@ -101,6 +133,8 @@ const plateDetail = platesList.slice(0, 12).map(plate => {
   const maxD = Math.max(0, ...ps.map(s => toDays(s.limit_up_days)));
   const sumDays = ps.reduce((a, s) => a + toDays(s.limit_up_days), 0);
   const sumChange = ps.reduce((a, s) => a + (Number(s.change_percent) || 0), 0);
+  const sumSeal = ps.reduce((a, s) => a + (Number(s.buy_lock_volume_ratio) || 0), 0);
+  const sumTurn = ps.reduce((a, s) => a + (Number(s.turnover_ratio) || 0), 0);
   const leaders = ps.filter(s => toDays(s.limit_up_days) === maxD).map(s => s.stock_name).slice(0, 2);
   return {
     plate,
@@ -108,6 +142,8 @@ const plateDetail = platesList.slice(0, 12).map(plate => {
     maxD,
     avgDays: (sumDays / count).toFixed(1),
     avgChange: (sumChange / count).toFixed(1),
+    avgSeal: (sumSeal / count).toFixed(2),
+    avgTurn: (sumTurn / count).toFixed(1),
     leader: leaders.join(' / ') || '—',
   };
 }).sort((a, b) => b.count - a.count);
@@ -125,6 +161,41 @@ const earlyN = Number(earlyRate);
 insights.push(earlyN >= 60 ? `早盘（10:00 前）封板占比 <b>${earlyRate}%</b>，资金抢筹意愿强、情绪亢奋。`
   : earlyN >= 40 ? `早盘封板占比 <b>${earlyRate}%</b>，节奏相对平稳，以题材驱动为主。`
   : `早盘封板占比 <b>${earlyRate}%</b>，多为盘中/尾盘拉升，题材持续性需观察。`);
+const lateN = Number(lateRate);
+insights.push(lateN >= 15 ? `尾盘（14:30 后）封板占比 <b>${lateRate}%</b>，尾盘资金抢筹，次日溢价存在不确定性。`
+  : lateN >= 8 ? `尾盘封板占比 <b>${lateRate}%</b>，尾盘发酵适中，关注补涨题材。`
+  : `尾盘封板占比 <b>${lateRate}%</b>，全天封板节奏偏早，情绪一致性较强。`);
+insights.push(`平均换手率 <b>${avgTurnover}%</b>，${Number(avgTurnover) >= 15 ? '交投高度活跃、筹码分歧较大。' : Number(avgTurnover) >= 8 ? '交投活跃，短线资金进出明显。' : '换手相对温和，多为锁仓或趋势型涨停。'}平均封单比 <b>${avgSeal}</b>，${Number(avgSeal) >= 1 ? '封板承接强、抛压消化充分。' : Number(avgSeal) >= 0.5 ? '封板强度中性、留意盘中分歧。' : '封板偏弱，需警惕烂板与高位炸板。'}`);
+insights.push(`市值结构小盘（< 50 亿）涨停占比 <b>${smallCapPct}%</b>，平均流通市值 <b>${avgCap} 亿</b>，${Number(smallCapPct) >= 60 ? '资金明显偏好小盘题材炒作。' : '资金兼顾中大盘，题材以权重或容量标的驱动。'}`);
+insights.push(`涨停原因集中度 <b>${topReasonShare}%</b>（「<b>${topReason}</b>」${topReasonCount} 只），${Number(topReasonShare) >= 30 ? '主线明确、资金合力较强。' : '题材相对分散，尚未形成单一主线。'}`);
+
+// ==================== 情绪温度与四维结论 ====================
+const moodScore = Math.max(0, Math.min(100, Math.round(
+  Math.min(100, totalCount * 4) * 0.22
+  + Math.min(100, maxLimitUp * 16) * 0.20
+  + Number(sealRate) * 0.28
+  + Number(earlyRate) * 0.15
+  + Math.max(0, 100 - Number(avgBreak) * 40) * 0.15
+)));
+const moodLabel = moodScore >= 75 ? '亢奋' : moodScore >= 60 ? '活跃' : moodScore >= 45 ? '中性' : moodScore >= 30 ? '谨慎' : '冰点';
+const moodColor = moodScore >= 75 ? '#ff4d4f' : moodScore >= 60 ? '#fa8c16' : moodScore >= 45 ? '#faad14' : moodScore >= 30 ? '#1890ff' : '#8c8c8c';
+
+const breadthVerdict = Number(lianbanRate) >= 30 ? '连板接力活跃，赚钱效应强，情绪处高位。'
+  : Number(lianbanRate) >= 20 ? '连板延续尚可，情绪中性偏强。'
+  : Number(lianbanRate) >= 10 ? '以首板为主，接力意愿一般，情绪偏弱。'
+  : '首板为主、缺连板，赚钱效应差，情绪处冰点。';
+const qualityVerdict = Number(sealRate) >= 75 && Number(avgBreak) <= 1 ? '封板扎实、炸板极少，次日溢价确定性高。'
+  : Number(sealRate) >= 55 ? '封板质量中性，存在一定分歧。'
+  : '炸板偏多、封板松散，高位股次日回落风险大。';
+const styleVerdict = Number(smallCapPct) >= 60 ? '游资主导的小盘题材风格，弹性大、波动也大。'
+  : Number(smallCapPct) >= 40 ? '中小盘为主，题材与容量并存。'
+  : '偏大市值/权重风格，资金更看重容量与确定性。';
+const themeVerdict = Number(topReasonShare) >= 30 ? `主线明确、合力强，聚焦「${topReason}」。`
+  : Number(topReasonShare) >= 18 ? `存在相对主线「${topReason}」，但题材集中度一般。`
+  : '题材分散、轮动快，缺乏单一主线。';
+
+const themeLine = hotPlate !== '无' ? `主线「<b>${hotPlate}</b>」${hotPlateCount} 家` : '今日暂无明确主线';
+const moodConclusion = `市场情绪温度 <b>${moodScore}（${moodLabel}）</b>：今日涨停 <b>${totalCount}</b> 家、最高 <b>${maxLimitUp} 板</b>，连板晋级率 <b>${lianbanRate}%</b>；封板成功率 <b>${sealRate}%</b>、平均炸板 <b>${avgBreak}</b> 次，${Number(sealRate) >= 75 && Number(avgBreak) <= 1 ? '封板扎实、情绪处高位' : Number(sealRate) >= 55 ? '封板质量中性、情绪中性' : '封板松散、需防高位回落'}。${themeLine}，题材集中度 <b>${topReasonShare}%</b>；${Number(smallCapPct) >= 60 ? '资金偏小盘题材' : Number(smallCapPct) >= 40 ? '资金以中小盘为主' : '资金偏大盘容量'}。`;
 ---
 
 <Layout title="股票数据分析看板">
@@ -155,93 +226,134 @@ insights.push(earlyN >= 60 ? `早盘（10:00 前）封板占比 <b>${earlyRate}%
     </header>
 
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      <!-- ============ 核心 KPI 面板 ============ -->
-      <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500 font-medium">今日涨停</span>
-            <span class="w-8 h-8 rounded-lg bg-[#fff1f0] text-[#ff4d4f] flex items-center justify-center"><i class="ri-line-chart-line"></i></span>
+      <!-- ============ 今日市场结论 ============ -->
+      <section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-5">
+          <div class="lg:col-span-2 p-6 lg:p-8 flex flex-col justify-between gap-6 bg-gradient-to-br from-gray-50 to-white border-b lg:border-b-0 lg:border-r border-gray-100">
+            <div>
+              <div class="flex items-center gap-2 text-xs font-semibold text-gray-500 tracking-wide mb-3">
+                <i class="ri-heart-pulse-fill text-[#ff4d4f] text-base"></i> 市场情绪温度
+              </div>
+              <div class="flex items-end gap-3">
+                <span class="text-6xl font-black leading-none" style={`color:${moodColor}`}>{moodScore}</span>
+                <div class="pb-1">
+                  <div class="text-lg font-bold text-gray-800">{moodLabel}</div>
+                  <div class="text-xs text-gray-400">满分 100</div>
+                </div>
+              </div>
+              <div class="mt-5 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all" style={`width:${moodScore}%; background:${moodColor}`}></div>
+              </div>
+              <div class="mt-2 flex justify-between text-[11px] text-gray-400">
+                <span>冰点</span><span>谨慎</span><span>中性</span><span>活跃</span><span>亢奋</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <div class="text-2xl font-extrabold text-gray-800">{totalCount}<span class="text-xs text-gray-400 ml-1">家</span></div>
+                <div class="text-xs text-gray-500">今日涨停</div>
+              </div>
+              <div>
+                <div class="text-2xl font-extrabold text-[#fa8c16]">{maxLimitUp}<span class="text-xs text-gray-400 ml-1">板</span></div>
+                <div class="text-xs text-gray-500">最高连板</div>
+              </div>
+              <div>
+                <div class="text-2xl font-extrabold text-[#52c41a]">{sealRate}<span class="text-xs text-gray-400 ml-1">%</span></div>
+                <div class="text-xs text-gray-500">封板成功率</div>
+              </div>
+            </div>
           </div>
-          <div class="text-3xl font-extrabold text-[#ff4d4f]">{totalCount}<span class="text-sm font-medium text-gray-400 ml-1">只</span></div>
-          <p class="text-xs text-gray-400 mt-1">涨停家数</p>
-        </div>
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500 font-medium">平均涨幅</span>
-            <span class="w-8 h-8 rounded-lg bg-[#f6ffed] text-[#52c41a] flex items-center justify-center"><i class="ri-arrow-up-double-fill"></i></span>
+          <div class="lg:col-span-3 p-6 lg:p-8">
+            <div class="flex items-center gap-2 mb-3">
+              <i class="ri-lightbulb-flash-fill text-[#2f54eb] text-lg"></i>
+              <h2 class="text-lg font-bold text-gray-900">今日结论</h2>
+            </div>
+            <p class="text-sm leading-relaxed text-gray-700" set:html={moodConclusion}></p>
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <div class="flex items-start gap-2 bg-[#fff1f0]/60 border border-[#ffccc7] rounded-xl px-3 py-2.5">
+                <i class="ri-arrow-up-circle-fill text-[#ff4d4f] text-base shrink-0"></i>
+                <span><b class="text-gray-800">广度</b><span class="text-gray-600"> · {breadthVerdict}</span></span>
+              </div>
+              <div class="flex items-start gap-2 bg-[#f6ffed]/70 border border-[#d9f7be] rounded-xl px-3 py-2.5">
+                <i class="ri-shield-check-fill text-[#52c41a] text-base shrink-0"></i>
+                <span><b class="text-gray-800">质量</b><span class="text-gray-600"> · {qualityVerdict}</span></span>
+              </div>
+              <div class="flex items-start gap-2 bg-[#fffbe6]/70 border border-[#ffe58f] rounded-xl px-3 py-2.5">
+                <i class="ri-rocket-2-fill text-[#d48806] text-base shrink-0"></i>
+                <span><b class="text-gray-800">风格</b><span class="text-gray-600"> · {styleVerdict}</span></span>
+              </div>
+              <div class="flex items-start gap-2 bg-[#f9f0ff]/70 border border-[#efdbff] rounded-xl px-3 py-2.5">
+                <i class="ri-fire-fill text-[#722ed1] text-base shrink-0"></i>
+                <span><b class="text-gray-800">主线</b><span class="text-gray-600"> · {themeVerdict}</span></span>
+              </div>
+            </div>
           </div>
-          <div class="text-3xl font-extrabold text-[#52c41a]">{avgChange}<span class="text-sm font-medium text-gray-400 ml-1">%</span></div>
-          <p class="text-xs text-gray-400 mt-1">平均涨幅</p>
-        </div>
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500 font-medium">最高连板</span>
-            <span class="w-8 h-8 rounded-lg bg-[#fff7e6] text-[#fa8c16] flex items-center justify-center"><i class="ri-medal-fill"></i></span>
-          </div>
-          <div class="text-3xl font-extrabold text-[#fa8c16]">{maxLimitUp}<span class="text-sm font-medium text-gray-400 ml-1">板</span></div>
-          <p class="text-xs text-gray-400 mt-1 truncate">龙头：{topStocksStr || '—'}</p>
-        </div>
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500 font-medium">连板股</span>
-            <span class="w-8 h-8 rounded-lg bg-[#e6f7ff] text-[#1890ff] flex items-center justify-center"><i class="ri-stack-fill"></i></span>
-          </div>
-          <div class="text-3xl font-extrabold text-[#1890ff]">{lianbanCount}<span class="text-sm font-medium text-gray-400 ml-1">只</span></div>
-          <p class="text-xs text-gray-400 mt-1">2板及以上（晋级率{lianbanRate}%）</p>
-        </div>
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500 font-medium">最热门板块</span>
-            <span class="w-8 h-8 rounded-lg bg-[#f9f0ff] text-[#722ed1] flex items-center justify-center"><i class="ri-fire-fill"></i></span>
-          </div>
-          <div class="text-xl font-extrabold text-[#722ed1] leading-tight truncate" title={hotPlate}>{hotPlate}</div>
-          <p class="text-xs text-gray-400 mt-1">{hotPlateCount} 只相关股票</p>
-        </div>
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500 font-medium">平均开板</span>
-            <span class="w-8 h-8 rounded-lg bg-[#fff1e6] text-[#d46b08] flex items-center justify-center"><i class="ri-door-open-fill"></i></span>
-          </div>
-          <div class="text-3xl font-extrabold text-[#d46b08]">{avgBreak}<span class="text-sm font-medium text-gray-400 ml-1">次</span></div>
-          <p class="text-xs text-gray-400 mt-1">平均炸板次数</p>
         </div>
       </section>
 
-      <!-- ============ 市场情绪指标带 ============ -->
-      <section class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div class="bg-gradient-to-br from-[#fff1f0] to-white rounded-2xl p-4 border border-[#ffd6d5] flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-[#ff4d4f]/10 text-[#ff4d4f] flex items-center justify-center"><i class="ri-flag-2-line text-xl"></i></div>
-          <div>
-            <div class="text-2xl font-extrabold text-gray-800">{shoubanCount}<span class="text-sm text-gray-400 ml-1">家</span></div>
-            <div class="text-xs text-gray-500">首板</div>
+      <!-- ============ 四大维度详解 ============ -->
+      <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i class="ri-arrow-up-circle-fill text-[#ff4d4f] text-lg"></i>市场广度</h3>
+            <span class="text-2xl font-extrabold text-[#ff4d4f]">{lianbanRate}<span class="text-sm text-gray-400 ml-1">%</span></span>
+          </div>
+          <p class="text-xs leading-relaxed text-gray-600 mb-4">{breadthVerdict}</p>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{totalCount}</div><div class="text-[11px] text-gray-400">涨停家数</div></div>
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{shoubanCount}</div><div class="text-[11px] text-gray-400">首板</div></div>
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{lianbanCount}</div><div class="text-[11px] text-gray-400">连板股</div></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+            <span>最高连板 <b class="text-gray-700">{maxLimitUp} 板</b></span>
+            <span>龙头 <span class="text-gray-700 truncate max-w-[90px] align-bottom">{topStocksStr || '—'}</span></span>
           </div>
         </div>
-        <div class="bg-gradient-to-br from-[#e6f7ff] to-white rounded-2xl p-4 border border-[#bae7ff] flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-[#1890ff]/10 text-[#1890ff] flex items-center justify-center"><i class="ri-arrow-go-forward-line text-xl"></i></div>
-          <div>
-            <div class="text-2xl font-extrabold text-gray-800">{lianbanRate}<span class="text-sm text-gray-400 ml-1">%</span></div>
-            <div class="text-xs text-gray-500">连板晋级率</div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i class="ri-shield-check-fill text-[#52c41a] text-lg"></i>封板质量</h3>
+            <span class="text-2xl font-extrabold text-[#52c41a]">{sealRate}<span class="text-sm text-gray-400 ml-1">%</span></span>
+          </div>
+          <p class="text-xs leading-relaxed text-gray-600 mb-4">{qualityVerdict}</p>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{avgBreak}</div><div class="text-[11px] text-gray-400">平均开板</div></div>
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{earlyRate}<span class="text-[10px] text-gray-400">%</span></div><div class="text-[11px] text-gray-400">早盘封板</div></div>
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{lateRate}<span class="text-[10px] text-gray-400">%</span></div><div class="text-[11px] text-gray-400">尾盘封板</div></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+            <span>平均封单量 <b class="text-gray-700">{avgSeal} 倍</b></span>
+            <span>平均连板 <b class="text-gray-700">{avgDays} 板</b></span>
           </div>
         </div>
-        <div class="bg-gradient-to-br from-[#f6ffed] to-white rounded-2xl p-4 border border-[#b7eb8f] flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-[#52c41a]/10 text-[#52c41a] flex items-center justify-center"><i class="ri-shield-check-line text-xl"></i></div>
-          <div>
-            <div class="text-2xl font-extrabold text-gray-800">{sealRate}<span class="text-sm text-gray-400 ml-1">%</span></div>
-            <div class="text-xs text-gray-500">封板成功率（0开板）</div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i class="ri-rocket-2-fill text-[#d48806] text-lg"></i>资金风格</h3>
+            <span class="text-2xl font-extrabold text-[#d48806]">{smallCapPct}<span class="text-sm text-gray-400 ml-1">%</span></span>
+          </div>
+          <p class="text-xs leading-relaxed text-gray-600 mb-4">{styleVerdict}</p>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{smallCapPct}<span class="text-[10px] text-gray-400">%</span></div><div class="text-[11px] text-gray-400">小盘占比</div></div>
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{avgCap}</div><div class="text-[11px] text-gray-400">流通市值(亿)</div></div>
+            <div class="bg-gray-50 rounded-xl py-2"><div class="text-lg font-extrabold text-gray-800">{avgTurnover}<span class="text-[10px] text-gray-400">%</span></div><div class="text-[11px] text-gray-400">平均换手</div></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400">
+            <span>中盘 <b class="text-gray-700">{midCapPct}%</b></span>
+            <span>大盘 <b class="text-gray-700">{largeCapPct}%</b></span>
           </div>
         </div>
-        <div class="bg-gradient-to-br from-[#fff7e6] to-white rounded-2xl p-4 border border-[#ffd591] flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-[#fa8c16]/10 text-[#fa8c16] flex items-center justify-center"><i class="ri-sun-fill text-xl"></i></div>
-          <div>
-            <div class="text-2xl font-extrabold text-gray-800">{earlyRate}<span class="text-sm text-gray-400 ml-1">%</span></div>
-            <div class="text-xs text-gray-500">早盘(10点前)封板</div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i class="ri-fire-fill text-[#722ed1] text-lg"></i>主线强度</h3>
+            <span class="text-2xl font-extrabold text-[#722ed1]">{topReasonShare}<span class="text-sm text-gray-400 ml-1">%</span></span>
           </div>
-        </div>
-        <div class="bg-gradient-to-br from-[#f9f0ff] to-white rounded-2xl p-4 border border-[#d3adf7] flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-[#722ed1]/10 text-[#722ed1] flex items-center justify-center"><i class="ri-stack-fill text-xl"></i></div>
-          <div>
-            <div class="text-2xl font-extrabold text-gray-800">{avgDays}<span class="text-sm text-gray-400 ml-1">板</span></div>
-            <div class="text-xs text-gray-500">平均连板高度</div>
+          <p class="text-xs leading-relaxed text-gray-600 mb-4">{themeVerdict}</p>
+          <div class="bg-gray-50 rounded-xl px-3 py-2.5 mb-2">
+            <div class="text-sm font-bold text-gray-800 truncate" title={hotPlate}>{hotPlate}</div>
+            <div class="text-[11px] text-gray-400">{hotPlateCount} 只涨停 · 题材集中度 {topReasonShare}%</div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-gray-400">
+            <span>Top 题材 <b class="text-gray-700 truncate max-w-[110px] align-bottom">{topReason}</b></span>
+            <span>{topReasonCount} 只</span>
           </div>
         </div>
       </section>
@@ -348,6 +460,27 @@ insights.push(earlyN >= 60 ? `早盘（10:00 前）封板占比 <b>${earlyRate}%
             </div>
             <div class="p-4 h-72"><canvas id="breakTimesChart"></canvas></div>
           </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 pt-4">
+              <h3 class="font-semibold text-gray-800 flex items-center gap-1.5"><i class="ri-pie-chart-2-fill text-[#13c2c2]"></i>流通市值结构</h3>
+              <p class="text-xs text-gray-400">涨停样本市值分布</p>
+            </div>
+            <div class="p-4 h-72"><canvas id="marketCapChart"></canvas></div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 pt-4">
+              <h3 class="font-semibold text-gray-800 flex items-center gap-1.5"><i class="ri-swap-3-fill text-[#2f54eb]"></i>换手率分布</h3>
+              <p class="text-xs text-gray-400">按换手率区间统计家数</p>
+            </div>
+            <div class="p-4 h-72"><canvas id="turnoverChart"></canvas></div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 pt-4">
+              <h3 class="font-semibold text-gray-800 flex items-center gap-1.5"><i class="ri-lock-2-fill text-[#722ed1]"></i>封单强度分布</h3>
+              <p class="text-xs text-gray-400">封单量 / 流通股本（封单比）</p>
+            </div>
+            <div class="p-4 h-72"><canvas id="sealRatioChart"></canvas></div>
+          </div>
         </div>
       </section>
 
@@ -367,6 +500,8 @@ insights.push(earlyN >= 60 ? `早盘（10:00 前）封板占比 <b>${earlyRate}%
                 <th class="px-4 py-2.5 font-semibold text-center">最高连板</th>
                 <th class="px-4 py-2.5 font-semibold text-center">平均连板</th>
                 <th class="px-4 py-2.5 font-semibold text-center">平均涨幅</th>
+                <th class="px-4 py-2.5 font-semibold text-center">平均封单比</th>
+                <th class="px-4 py-2.5 font-semibold text-center">平均换手</th>
                 <th class="px-4 py-2.5 font-semibold">龙头股</th>
                 <th class="px-4 py-2.5 font-semibold w-40">深度占比</th>
               </tr>
@@ -388,6 +523,8 @@ insights.push(earlyN >= 60 ? `早盘（10:00 前）封板占比 <b>${earlyRate}%
                     </td>
                     <td class="px-4 py-2.5 text-center text-xs text-gray-600">{p.avgDays}</td>
                     <td class="px-4 py-2.5 text-center text-xs font-medium {Number(p.avgChange) > 0 ? 'text-[#ff4d4f]' : 'text-[#52c41a]'}">{p.avgChange}%</td>
+                    <td class="px-4 py-2.5 text-center text-xs text-[#2f54eb]">{p.avgSeal}</td>
+                    <td class="px-4 py-2.5 text-center text-xs text-[#13c2c2]">{p.avgTurn}%</td>
                     <td class="px-4 py-2.5 text-xs text-gray-700 max-w-[160px] truncate" title={p.leader}>{p.leader}</td>
                     <td class="px-4 py-2.5">
                       <div class="flex items-center gap-2">
@@ -793,6 +930,48 @@ insights.push(earlyN >= 60 ? `早盘（10:00 前）封板占比 <b>${earlyRate}%
         new Chart(ctx, {
           type: 'bar',
           data: { labels: sorted.map(i => i[0]), datasets: [{ label: '家数', data: sorted.map(i => i[1]), backgroundColor: sorted.map((_, i) => alpha(i === 0 ? '#52c41a' : i <= 2 ? '#fa8c16' : '#ff4d4f', 0.75)), borderColor: sorted.map((_, i) => (i === 0 ? '#52c41a' : i <= 2 ? '#fa8c16' : '#ff4d4f')), borderWidth: 1, borderRadius: 4 }] },
+          options: baseChartOpts({ plugins: { legend: { display: false }, datalabels: { color: '#333', anchor: 'end', align: 'end', font: { size: 11 } } } }),
+        });
+      });
+
+      // 7. 流通市值结构
+      registerChart('marketCapChart', (ctx) => {
+        let small = 0, mid = 0, large = 0;
+        stocks.forEach(st => { const c = Number(st.non_restricted_capital) || 0; if (c > 0) { if (c < 50) small++; else if (c < 200) mid++; else large++; } });
+        const labels = ['小盘 <50亿', '中盘 50-200亿', '大盘 200亿+'];
+        const data = [small, mid, large];
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels, datasets: [{ data, backgroundColor: [alpha('#13c2c2', 0.85), alpha('#2f54eb', 0.85), alpha('#eb2f96', 0.85)], borderColor: '#fff', borderWidth: 2 }] },
+          options: {
+            responsive: true, maintainAspectRatio: false, cutout: '62%',
+            plugins: {
+              legend: { position: 'bottom', labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 12, font: { size: 11 } } },
+              tooltip: { backgroundColor: 'rgba(25,25,35,0.9)', padding: 10, cornerRadius: 8 },
+              datalabels: { color: '#fff', font: { size: 12, weight: 'bold' }, formatter: (v) => (v ? `${v}只` : '') },
+            },
+          },
+        });
+      });
+
+      // 8. 换手率分布
+      registerChart('turnoverChart', (ctx) => {
+        const buckets = [['<5%', 0, 5], ['5-10%', 5, 10], ['10-20%', 10, 20], ['20-30%', 20, 30], ['30%+', 30, Infinity]];
+        const counts = buckets.map(([, lo, hi]) => stocks.filter(s => { const t = Number(s.turnover_ratio) || 0; return t >= lo && t < hi; }).length);
+        new Chart(ctx, {
+          type: 'bar',
+          data: { labels: buckets.map(b => b[0]), datasets: [{ label: '家数', data: counts, backgroundColor: counts.map((_, i) => alpha(i < 2 ? '#52c41a' : i < 4 ? '#fa8c16' : '#ff4d4f', 0.8)), borderColor: counts.map((_, i) => (i < 2 ? '#52c41a' : i < 4 ? '#fa8c16' : '#ff4d4f')), borderWidth: 1, borderRadius: 4 }] },
+          options: baseChartOpts({ plugins: { legend: { display: false }, datalabels: { color: '#333', anchor: 'end', align: 'end', font: { size: 11 } } } }),
+        });
+      });
+
+      // 9. 封单强度分布
+      registerChart('sealRatioChart', (ctx) => {
+        const buckets = [['<0.5', 0, 0.5], ['0.5-1', 0.5, 1], ['1-2', 1, 2], ['2-5', 2, 5], ['5+', 5, Infinity]];
+        const counts = buckets.map(([, lo, hi]) => stocks.filter(s => { const v = Number(s.buy_lock_volume_ratio) || 0; return v >= lo && v < hi; }).length);
+        new Chart(ctx, {
+          type: 'bar',
+          data: { labels: buckets.map(b => b[0]), datasets: [{ label: '家数', data: counts, backgroundColor: counts.map((_, i) => alpha(i >= counts.length - 1 ? '#52c41a' : i >= 2 ? '#fa8c16' : '#ff4d4f', 0.8)), borderColor: counts.map((_, i) => (i >= counts.length - 1 ? '#52c41a' : i >= 2 ? '#fa8c16' : '#ff4d4f')), borderWidth: 1, borderRadius: 4 }] },
           options: baseChartOpts({ plugins: { legend: { display: false }, datalabels: { color: '#333', anchor: 'end', align: 'end', font: { size: 11 } } } }),
         });
       });
