@@ -1,5 +1,10 @@
 
 # core-analysis
+
+## Dashboard
+
+`/dashboard` 提供涨停复盘和板块热度分析。其中板块涨停碰撞图展示涨停数量最多的 15 个板块：气泡面积与涨停家数成正比，进入页面时通过碰撞动画完成排列，悬停可查看完整数据，点击可按板块筛选。
+
 ```
 npm create astro@latest -- --template basics
 ```
