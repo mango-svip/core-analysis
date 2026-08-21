@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>照片水印工具</title>
+<style is:global>
+  :root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --ink: #1f2430;
+    --muted: #6b7280;
+    --line: #e4e7ec;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+  }
+  .app { max-width: 1180px; margin: 0 auto; padding: 24px 20px 48px; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); margin-bottom: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 38px; height: 38px; border-radius: 8px; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px;
+  }
+  .brand h1 { font-size: 18px; margin: 0; line-height: 1.2; }
+  .brand p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .save-btn {
+    border: none; cursor: pointer; background: var(--accent); color: #fff;
+    height: 40px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 8px; transition: background .12s ease;
+  }
+  .save-btn:hover { background: var(--accent-dark); }
+  .save-btn:disabled { background: #b6c7ee; cursor: not-allowed; }
+  .layout { display: grid; grid-template-columns: 306px 1fr; gap: 20px; align-items: start; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .panel h2 { font-size: 14px; margin: 0 0 12px; }
+  .group { padding: 14px 0; border-top: 1px solid var(--line); }
+  .group:first-of-type { border-top: none; }
+  .group label { display: block; font-size: 13px; margin-bottom: 8px; }
+  input[type=text], select { height: 38px; width: 100%; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+  input[type=text]:focus { outline: 2px solid #bfdbfe; border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=color] { width: 100%; height: 36px; border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 2px; cursor: pointer; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .value { font-size: 12px; color: var(--muted); min-width: 48px; text-align: right; flex-shrink: 0; }
+  .chips { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .chip {
+    height: 36px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    cursor: pointer; font-size: 13px; color: var(--ink); display: inline-flex; align-items: center; justify-content: center;
+  }
+  .chip.active { border-color: var(--accent); background: #eff6ff; color: var(--accent-dark); font-weight: 600; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { flex: 1; height: 36px; border: none; background: #fff; cursor: pointer; font-size: 13px; color: var(--ink); }
+  .seg button.active { background: var(--accent); color: #fff; }
+  .upload {
+    border: 1.5px dashed #c3cad6; border-radius: 8px; padding: 18px 12px; text-align: center; cursor: pointer;
+    transition: border-color .15s ease, background .15s ease; background: #fafbfc;
+  }
+  .upload:hover, .upload.drag { border-color: var(--accent); background: #eff6ff; }
+  .upload .ic { font-size: 26px; line-height: 1; }
+  .upload p { margin: 8px 0 0; font-size: 13px; color: var(--muted); word-break: break-all; }
+  .upload b { color: var(--accent); }
+  .textarea {
+    width: 100%; min-height: 84px; padding: 10px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: 14px; resize: vertical; background: #fff; color: var(--ink); font-family: inherit; line-height: 1.5;
+  }
+  .textarea:focus { outline: 2px solid #bfdbfe; border-color: var(--accent); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .preview-stage {
+    position: relative; overflow: hidden; border-radius: 8px; background: repeating-conic-gradient(#edf0f3 0% 25%, #f7f9fb 0% 50%) 0 0 / 20px 20px;
+    border: 1px solid var(--line); min-height: 420px; display: flex; align-items: center; justify-content: center; padding: 12px;
+  }
+  .preview-stage canvas { max-width: 100%; max-height: 620px; display: block; box-shadow: 0 2px 10px rgba(16,24,40,.08); border-radius: 4px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px 20px; font-size: 14px; }
+  .empty .big { font-size: 44px; line-height: 1; display: block; margin-bottom: 12px; }
+  .preview-stage.dragover { outline: 3px solid var(--accent); outline-offset: -3px; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .save-btn { width: 100%; justify-content: center; }
+    .preview-stage { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">印</div>
+      <div>
+        <h1>照片水印工具</h1>
+        <p>全部在本机浏览器内处理，照片不会上传到任何服务器</p>
+      </div>
+    </div>
+    <button class="save-btn" id="downloadBtn" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      下载水印图
+    </button>
+  </header>
+
+  <div class="layout">
+    <aside class="panel">
+      <h2>水印设置</h2>
+
+      <div class="group">
+        <label>上传照片</label>
+        <div class="upload" id="uploadBox">
+          <div class="ic">🖼️</div>
+          <p><b>点击选择</b> 或拖拽图片到此处，也可直接粘贴</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
+
+      <div class="group">
+        <label for="textInput">水印文字</label>
+        <textarea id="textInput" class="textarea" placeholder="每行一条水印文字">清关专用</textarea>
+        <div class="hint">可多行，例如：清关专用 / 请勿商用</div>
+      </div>
+
+      <div class="group">
+        <label>样式</label>
+        <div class="chips" id="styleChips">
+          <button class="chip active" data-style="solid">实心</button>
+          <button class="chip" data-style="outline">描边</button>
+          <button class="chip" data-style="filled">填充块</button>
+          <button class="chip" data-style="diagonal">斜角带</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label for="colorInput">颜色</label>
+        <input type="color" id="colorInput" value="#d4163c">
+      </div>
+
+      <div class="group">
+        <label class="row" for="opacityInput"><span style="flex:1">透明度</span><span class="value" id="opacityValue">60%</span></label>
+        <input type="range" id="opacityInput" min="5" max="100" value="60">
+      </div>
+
+      <div class="group">
+        <label class="row" for="angleInput"><span style="flex:1">倾斜角度</span><span class="value" id="angleValue">-30°</span></label>
+        <input type="range" id="angleInput" min="-90" max="90" value="-30">
+      </div>
+
+      <div class="group">
+        <label class="row" for="sizeInput"><span style="flex:1">字号</span><span class="value" id="sizeValue">6%</span></label>
+        <input type="range" id="sizeInput" min="1" max="30" step="0.5" value="6">
+        <div class="hint">按图片宽度比例</div>
+      </div>
+
+      <div class="group">
+        <label>铺排方式</label>
+        <div class="seg" id="tileSeg">
+          <button data-tile="single" class="active">单处</button>
+          <button data-tile="tiled">平铺</button>
+        </div>
+      </div>
+
+      <div class="group" id="posGroup">
+        <label>位置</label>
+        <div class="chips" id="posGrid">
+          <button class="chip" data-pos="tl">左上</button>
+          <button class="chip" data-pos="tc">顶中</button>
+          <button class="chip" data-pos="tr">右上</button>
+          <button class="chip" data-pos="cl">左中</button>
+          <button class="chip active" data-pos="cc">正中</button>
+          <button class="chip" data-pos="cr">右中</button>
+          <button class="chip" data-pos="bl">左下</button>
+          <button class="chip" data-pos="bc">底中</button>
+          <button class="chip" data-pos="br">右下</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="preview-stage" id="stage">
+      <div class="empty" id="empty"><span class="big">🖼️</span>先上传一张照片预览效果</div>
+      <canvas id="preview" style="display:none"></canvas>
+    </section>
+  </div>
+</div>
+
+<script is:inline>
+(function () {
+  'use strict';
+
+  var state = {
+    img: null,
+    name: 'watermarked',
+    text: '清关专用',
+    style: 'solid',
+    color: '#d4163c',
+    opacity: 60,
+    angle: -30,
+    size: 6,        // font size as % of image width
+    tile: 'single',
+    pos: 'cc'
+  };
+
+  var fileInput = document.getElementById('fileInput');
+  var uploadBox = document.getElementById('uploadBox');
+  var stage = document.getElementById('stage');
+  var empty = document.getElementById('empty');
+  var preview = document.getElementById('preview');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------- upload ----------
+  function loadFile(file) {
+    if (!file || !file.type.match(/^image\//)) { alert('请选择图片文件'); return; }
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      state.img = img;
+      state.name = (file.name.replace(/\.[^.]+$/, '') || 'photo') + '_watermark';
+      empty.style.display = 'none';
+      preview.style.display = 'block';
+      downloadBtn.disabled = false;
+      renderPreview();
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = function () { alert('图片加载失败'); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+
+  fileInput.addEventListener('change', function () { loadFile(fileInput.files[0]); });
+  uploadBox.addEventListener('click', function () { fileInput.click(); });
+
+  ['dragenter', 'dragover'].forEach(function (t) {
+    uploadBox.addEventListener(t, function (e) { e.preventDefault(); uploadBox.classList.add('drag'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    uploadBox.addEventListener(t, function (e) { e.preventDefault(); uploadBox.classList.remove('drag'); });
+  });
+  uploadBox.addEventListener('drop', function (e) { loadFile(e.dataTransfer.files[0]); });
+
+  document.addEventListener('paste', function (e) {
+    var items = (e.clipboardData || {}).items || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') === 0) {
+        var f = items[i].getAsFile();
+        if (f) { loadFile(f); return; }
+      }
+    }
+  });
+
+  ['dragenter', 'dragover'].forEach(function (t) {
+    stage.addEventListener(t, function (e) { e.preventDefault(); stage.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    stage.addEventListener(t, function (e) { e.preventDefault(); stage.classList.remove('dragover'); });
+  });
+  stage.addEventListener('drop', function (e) { loadFile(e.dataTransfer.files[0]); });
+
+  // ---------- controls ----------
+  $('textInput').addEventListener('input', function () { state.text = this.value; renderPreview(); });
+  $('colorInput').addEventListener('input', function () { state.color = this.value; renderPreview(); });
+  $('opacityInput').addEventListener('input', function () {
+    state.opacity = +this.value;
+    $('opacityValue').textContent = state.opacity + '%';
+    renderPreview();
+  });
+  $('angleInput').addEventListener('input', function () {
+    state.angle = +this.value;
+    $('angleValue').textContent = state.angle + '°';
+    renderPreview();
+  });
+  $('sizeInput').addEventListener('input', function () {
+    state.size = +this.value;
+    $('sizeValue').textContent = state.size + '%';
+    renderPreview();
+  });
+
+  $('styleChips').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    state.style = b.dataset.style;
+    [...this.querySelectorAll('.chip')].forEach(function (c) { c.classList.toggle('active', c === b); });
+    renderPreview();
+  });
+
+  $('tileSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    state.tile = b.dataset.tile;
+    [...this.querySelectorAll('button')].forEach(function (c) { c.classList.toggle('active', c === b); });
+    $('posGroup').style.display = state.tile === 'single' ? '' : 'none';
+    renderPreview();
+  });
+
+  $('posGrid').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    state.pos = b.dataset.pos;
+    [...this.querySelectorAll('.chip')].forEach(function (c) { c.classList.toggle('active', c === b); });
+    renderPreview();
+  });
+
+  // ---------- drawing ----------
+  function rgba(hex, a) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    var r = parseInt(hex.substring(0, 2), 16);
+    var g = parseInt(hex.substring(2, 4), 16);
+    var b = parseInt(hex.substring(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+
+  function linesOf(text) {
+    return text.split('\n');
+  }
+
+  function maxChars(lines) {
+    var m = 0;
+    lines.forEach(function (ln) { m = Math.max(m, ln.length); });
+    return m;
+  }
+
+  function fontFor(w, sizePct) {
+    return Math.round(w * sizePct / 100);
+  }
+
+  function drawBlock(ctx, cx, cy, rot, fontSize, lines, color) {
+    var lineH = fontSize * 1.4;
+    var mc = maxChars(lines);
+    var pad = fontSize * 0.4;
+    var bw = mc * fontSize * 1.05 + pad * 2;
+    var bh = lines.length * lineH + pad * 2;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot * Math.PI / 180);
+
+    var fillColor = color;
+    var strokeColor = null;
+
+    if (state.style === 'solid') {
+      fillColor = color;
+    } else if (state.style === 'filled') {
+      ctx.fillStyle = color;
+      roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, fontSize * 0.12);
+      ctx.fill();
+      fillColor = '#ffffff';
+    } else if (state.style === 'diagonal') {
+      var band = fontSize * 0.85;
+      var d = 4000;
+      ctx.save();
+      ctx.rotate(45 * Math.PI / 180);
+      ctx.fillStyle = color;
+      ctx.fillRect(-d / 2, -band / 2, d, band);
+      ctx.restore();
+      fillColor = '#ffffff';
+    } else { // outline
+      fillColor = null;
+      strokeColor = color;
+      ctx.lineJoin = 'round';
+    }
+
+    ctx.font = '700 ' + fontSize + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (strokeColor) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = Math.max(1, fontSize * 0.06);
+    }
+    if (fillColor) { ctx.fillStyle = fillColor; }
+
+    lines.forEach(function (ln, i) {
+      var dy = (i - (lines.length - 1) / 2) * lineH;
+      if (strokeColor) { ctx.strokeText(ln, 0, dy); }
+      if (fillColor) { ctx.fillText(ln, 0, dy); }
+    });
+    ctx.restore();
+  }
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function paint(ctx, W, H) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(state.img, 0, 0, W, H);
+
+    var text = state.text || '';
+    if (!text.trim()) return;
+    var lines = linesOf(text);
+    var color = rgba(state.color, state.opacity / 100);
+    var fontSize = fontFor(W, state.size);
+    var lineH = fontSize * 1.4;
+    var mc = maxChars(lines);
+
+    if (state.tile === 'tiled') {
+      var stepX = mc * fontSize * 1.6;
+      var stepY = lines.length * lineH * 2.2;
+      stepX = Math.max(stepX, fontSize);
+      stepY = Math.max(stepY, lineH * 1.5);
+      var cols = Math.ceil(W / stepX) + 2;
+      var rows = Math.ceil(H / stepY) + 2;
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          var cx = (c + (r % 2) * 0.5) * stepX - stepX;
+          var cy = r * stepY - stepY;
+          drawBlock(ctx, cx, cy, state.angle, fontSize, lines, color);
+        }
+      }
+      return;
+    }
+
+    var p = {
+      tl: { x: W * 0.28, y: H * 0.2 }, tc: { x: W * 0.5, y: H * 0.2 }, tr: { x: W * 0.72, y: H * 0.2 },
+      cl: { x: W * 0.28, y: H * 0.5 }, cc: { x: W * 0.5, y: H * 0.5 }, cr: { x: W * 0.72, y: H * 0.5 },
+      bl: { x: W * 0.28, y: H * 0.8 }, bc: { x: W * 0.5, y: H * 0.8 }, br: { x: W * 0.72, y: H * 0.8 }
+    }[state.pos] || { x: W * 0.5, y: H * 0.5 };
+
+    drawBlock(ctx, p.x, p.y, state.angle, fontSize, lines, color);
+  }
+
+  // ---------- preview ----------
+  function renderPreview() {
+    if (!state.img) return;
+    var img = state.img;
+    var maxDim = Math.min(900, Math.max(img.naturalWidth, img.naturalHeight) || 900);
+    var ratio = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    var W = Math.max(1, Math.round(img.naturalWidth * ratio));
+    var H = Math.max(1, Math.round(img.naturalHeight * ratio));
+    preview.width = W;
+    preview.height = H;
+    paint(preview.getContext('2d'), W, H);
+  }
+
+  // ---------- download ----------
+  downloadBtn.addEventListener('click', function () {
+    if (!state.img) return;
+    var canvas = document.createElement('canvas');
+    var img = state.img;
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    paint(canvas.getContext('2d'), canvas.width, canvas.height);
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = state.name + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+})();
+</script>
+</body>
+</html>
